@@ -1,4 +1,4 @@
-@model ArtistItem
+﻿@model ArtistItem
 @using Wavelength.Web.Infrastructure
 <a href="/artists/@Model.Id" class="brut wiggle group block bg-white p-4 text-center">
     @Html.Cover(new CoverVm { Url = Model.AvatarUrl, Color = Fmt.ColorFor(Model.Id), Label = Model.StageName, Round = true })

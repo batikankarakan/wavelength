@@ -1,4 +1,4 @@
-@model PlaylistItem
+﻿@model PlaylistItem
 @using Wavelength.Web.Infrastructure
 <a href="/playlists/@Model.Id" class="brut wiggle group block bg-white p-3">
     @Html.Cover(new CoverVm { Url = Model.CoverUrl, Color = Fmt.ColorFor(Model.Id + 2), Label = Model.Title })

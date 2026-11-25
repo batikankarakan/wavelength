@@ -1,4 +1,4 @@
-@model AlbumItem
+﻿@model AlbumItem
 @using Wavelength.Web.Infrastructure
 <a href="/albums/@Model.Id" class="brut wiggle group block bg-white p-3">
     @Html.Cover(new CoverVm { Url = Model.CoverUrl, Color = Fmt.ColorFor(Model.Id + 1), Label = Model.Title })
