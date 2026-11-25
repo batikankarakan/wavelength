@@ -1,0 +1,133 @@
+﻿@model List<Wavelength.Web.Controllers.QaSection>
+@using Wavelength.Web.Infrastructure
+@* TEMPORARY: team manual-test checklist. Delete Controllers/QaController.cs and this folder before submitting. *@
+@{
+    var total = Model.Sum(s => s.Items.Count);
+}
+<section class="relative overflow-hidden border-b-2 border-ink bg-ink text-paper page-top">
+    <div class="halftone-light absolute inset-0 opacity-30"></div>
+    <div class="relative mx-auto max-w-5xl px-6 pb-12">
+        <div class="flex flex-wrap gap-3">
+            @Html.Sticker("Geçici · sadece ekip", "bg-flame text-paper")
+            @Html.Sticker(total + " madde")
+        </div>
+        <h1 data-hop class="display mt-6 text-6xl md:text-8xl">Test <span class="inline-block -rotate-2 border-2 border-paper bg-volt px-3 text-ink">listesi.</span></h1>
+        <p class="mt-4 max-w-2xl font-mono text-sm text-paper/80">Her maddeyi dene, <b>✓ Geçti</b> ya da <b>✗ Bozuk</b> işaretle, bozuksa not yaz. İşaretler bu tarayıcıda saklanır. Bitince <b>Özeti kopyala</b> ile sonucu gruba yapıştır. Demo hesapların şifresi: <b>@WavelengthInitializer.DemoPassword</b></p>
+        <div class="mt-8 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+            <div>
+                <label for="qa-name" class="eyebrow mb-2 block text-volt">Test eden</label>
+                <input id="qa-name" class="field !bg-paper text-ink" placeholder="Adın" maxlength="40">
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <button type="button" id="qa-copy" class="btn-volt">Özeti kopyala</button>
+                <button type="button" id="qa-reset" class="btn-paper">Sıfırla</button>
+            </div>
+        </div>
+        <div class="mt-6 flex items-center gap-4 font-mono text-sm">
+            <div class="h-4 flex-1 border-2 border-paper"><div id="qa-bar" class="h-full bg-volt transition-all" style="width:0%"></div></div>
+            <span id="qa-count" class="w-40 text-right">0 / @total</span>
+        </div>
+    </div>
+</section>
+
+<section class="mx-auto max-w-5xl space-y-10 px-6 py-12" id="qa">
+    @foreach (var sec in Model)
+    {
+        <div class="brut bg-white" data-section="@sec.Title">
+            <div class="flex flex-wrap items-baseline justify-between gap-2 border-b-2 border-ink bg-paper px-5 py-4">
+                <h2 class="display text-3xl md:text-4xl">@sec.Title</h2>
+                @if (sec.Note != null) { <span class="font-mono text-xs uppercase">@sec.Note</span> }
+            </div>
+            @foreach (var item in sec.Items)
+            {
+                <div class="qa-item border-b-2 border-ink p-4 last:border-b-0" data-id="@item.Id">
+                    <div class="flex flex-wrap items-start gap-3 md:flex-nowrap">
+                        <p class="qa-text min-w-0 flex-1 font-medium">@item.Text</p>
+                        <div class="flex shrink-0 flex-wrap items-center gap-2">
+                            @if (item.Account != null) { <span class="sticker bg-mint" title="Bu hesapla dene">@item.Account</span> }
+                            @if (item.Link != null) { <a href="@item.Link" target="_blank" rel="noopener" class="chip chip-off">Aç ↗</a> }
+                            <button type="button" class="qa-ok chip chip-off" aria-pressed="false">✓ Geçti</button>
+                            <button type="button" class="qa-bug chip chip-off" aria-pressed="false">✗ Bozuk</button>
+                        </div>
+                    </div>
+                    <textarea class="qa-note field mt-3 hidden resize-y text-sm" rows="2" maxlength="500" placeholder="Ne oldu? (adım, hesap, ekranda ne gördün)"></textarea>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@section Scripts {
+<script>
+    // Checklist state lives in this browser only (localStorage); nothing is sent to the server.
+    $(function () {
+        var KEY = 'wl.qa.v1', total = @total;
+        var state = {};
+        try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { state = {}; }
+        state.items = state.items || {};
+
+        function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { } }
+
+        function paint($item) {
+            var s = state.items[$item.data('id')] || {};
+            $item.find('.qa-ok').toggleClass('chip-on bg-mint !text-ink', s.status === 'ok').toggleClass('chip-off', s.status !== 'ok').attr('aria-pressed', s.status === 'ok');
+            $item.find('.qa-bug').toggleClass('chip-on bg-flame !text-paper', s.status === 'bug').toggleClass('chip-off', s.status !== 'bug').attr('aria-pressed', s.status === 'bug');
+            $item.toggleClass('bg-mint/20', s.status === 'ok').toggleClass('bg-flame/10', s.status === 'bug');
+            $item.find('.qa-note').toggleClass('hidden', s.status !== 'bug').val(s.note || '');
+        }
+
+        function progress() {
+            var done = 0, bugs = 0;
+            $.each(state.items, function (_, s) { if (s.status) done++; if (s.status === 'bug') bugs++; });
+            $('#qa-bar').css('width', (done / total * 100) + '%');
+            $('#qa-count').text(done + ' / ' + total + (bugs ? ' · ' + bugs + ' bozuk' : ''));
+        }
+
+        $('.qa-item').each(function () { paint($(this)); });
+        $('#qa-name').val(state.name || '').on('input', function () { state.name = this.value; save(); });
+        progress();
+
+        $('#qa').on('click', '.qa-ok, .qa-bug', function () {
+            var $item = $(this).closest('.qa-item'), id = $item.data('id');
+            var s = state.items[id] || {};
+            var status = $(this).hasClass('qa-ok') ? 'ok' : 'bug';
+            s.status = s.status === status ? null : status;
+            state.items[id] = s;
+            save(); paint($item); progress();
+            if (s.status === 'bug') $item.find('.qa-note').trigger('focus');
+        });
+        $('#qa').on('input', '.qa-note', function () {
+            var id = $(this).closest('.qa-item').data('id');
+            (state.items[id] = state.items[id] || {}).note = this.value;
+            save();
+        });
+
+        $('#qa-reset').on('click', function () {
+            if (!confirm('Tüm işaretler ve notlar silinsin mi?')) return;
+            state = { name: state.name, items: {} };
+            save();
+            $('.qa-item').each(function () { paint($(this)); });
+            progress();
+        });
+
+        $('#qa-copy').on('click', function () {
+            var ok = 0, lines = [];
+            $('[data-section]').each(function () {
+                var title = $(this).data('section'), out = [];
+                $(this).find('.qa-item').each(function () {
+                    var s = state.items[$(this).data('id')] || {}, text = $(this).find('.qa-text').text();
+                    if (s.status === 'ok') ok++;
+                    if (s.status === 'bug') out.push('  ✗ ' + text + (s.note ? '\n     → ' + s.note : ''));
+                    else if (!s.status) out.push('  · (denenmedi) ' + text);
+                });
+                if (out.length) lines.push(title + '\n' + out.join('\n'));
+            });
+            var head = 'Wavelength test sonucu' + (state.name ? ' (' + state.name + ')' : '') + ': ' + ok + '/' + total + ' geçti';
+            var summary = head + (lines.length ? '\n\n' + lines.join('\n\n') : '\nHer şey geçti ✓');
+            var done = function () { WL.toast('Özet kopyalandı, gruba yapıştır.'); };
+            if (navigator.clipboard) navigator.clipboard.writeText(summary).then(done, function () { prompt('Kopyala:', summary); });
+            else prompt('Kopyala:', summary);
+        });
+    });
+</script>
+}

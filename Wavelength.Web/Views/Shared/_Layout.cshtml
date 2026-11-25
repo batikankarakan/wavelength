@@ -10,6 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@(string.IsNullOrEmpty(title) ? "Wavelength | Share. Save. Play." : title + " | Wavelength")</title>
     <meta name="description" content="@(ViewBag.Description ?? "Share, save and listen to music on Wavelength.")">
+    @if (ViewBag.Robots != null) { <meta name="robots" content="@ViewBag.Robots"> }
     <link rel="icon" href="~/Content/img/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="~/Content/fonts/fonts.css">
     <link rel="stylesheet" href="~/Content/site.css">

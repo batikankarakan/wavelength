@@ -99,6 +99,18 @@ public class AccessTests : IClassFixture<WavelengthFactory>
     }
 
     [Fact]
+    public async Task Team_checklist_is_for_signed_in_users_only()
+    {
+        var anon = await _app.NewSession().Get("/qa");
+        Assert.Equal(HttpStatusCode.Redirect, anon.Status);
+        Assert.StartsWith("/login", anon.Location);
+        var page = await (await _app.LoginAs("listener@wavelength.app")).Get("/qa");
+        Assert.Equal(HttpStatusCode.OK, page.Status);
+        Assert.Contains("noindex", page.Html);
+        Assert.Equal(35, page.Doc.QuerySelectorAll(".qa-item").Length);
+    }
+
+    [Fact]
     public async Task Forbidden_page_renders()
     {
         var page = await _app.NewSession().Get("/403");

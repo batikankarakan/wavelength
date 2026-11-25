@@ -171,6 +171,12 @@ tools/                         check.sh (compile check), razor-gen (views → C#
 Database/                      reference SQL schema, DBML, ER diagram
 ```
 
+## Temporary: team test checklist
+
+`/qa` (`Controllers/QaController.cs` + `Views/Qa/`) is a temporary manual-test checklist for the team (signed-in users
+only, not linked anywhere, `noindex`). **Delete both, and the `Team_checklist…` test in `AccessTests.cs`, before the
+project is submitted.**
+
 ## Git
 
 - Don't commit `packages/`, `bin/`, `obj/`, `node_modules/`, `App_Data/*.mdf` or files in `uploads/` (see `.gitignore`).
