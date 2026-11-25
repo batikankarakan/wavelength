@@ -1,0 +1,46 @@
+# Builds the ASP.NET MVC 5 app with MSBuild on Windows and runs the test suite against it in
+# IIS Express + LocalDB (the same setup teammates use with Visual Studio). No Docker involved.
+name: Windows build and tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/setup-msbuild@v2
+      - uses: NuGet/setup-nuget@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore Wavelength.Web/packages.config -PackagesDirectory packages
+
+      - name: Build the MVC 5 app (.NET Framework 4.8)
+        run: msbuild Wavelength.Web/Wavelength.Web.csproj /p:Configuration=Debug /v:minimal /nologo
+
+      - name: Start LocalDB
+        run: |
+          sqllocaldb create MSSQLLocalDB -s
+          sqllocaldb info MSSQLLocalDB
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Run tests (IIS Express + LocalDB)
+        env:
+          WAVELENGTH_TEST_HOST: iisexpress
+        run: dotnet test tests/Wavelength.Tests --nologo --logger "console;verbosity=normal" --logger "trx;LogFileName=results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: tests/Wavelength.Tests/TestResults/

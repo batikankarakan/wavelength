@@ -1,5 +1,5 @@
-using Wavelength.Tests.Infrastructure;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.EntityFrameworkCore;
@@ -8,10 +8,15 @@ using Wavelength.Web.Data;
 namespace Wavelength.Tests.Infrastructure;
 
 /// <summary>
-/// Starts the real ASP.NET MVC 5 app (Docker image built from docker/Dockerfile: Mono + XSP) with a fresh
-/// SQL Server database, which the app creates and seeds on its first request. One app + database per test class;
-/// both are removed on dispose. Needs Docker and the SQL Server from docker-compose.yml on localhost:1433
-/// (docker compose up -d sql). Set WAVELENGTH_TEST_SQL to use another SQL Server for the test-side checks.
+/// Starts the real ASP.NET MVC 5 app with a fresh SQL Server database, which the app creates and seeds on its
+/// first request. One app + database per test class; both are removed on dispose. Two hosts:
+/// <list type="bullet">
+/// <item><b>iisexpress</b> (default on Windows, no Docker): IIS Express serves Wavelength.Web (build the solution
+/// first) and the database is created in LocalDB, (localdb)\MSSQLLocalDB.</item>
+/// <item><b>docker</b> (default on macOS/Linux): the app runs in a container built from docker/Dockerfile (Mono + XSP)
+/// against the SQL Server from docker-compose.yml on localhost:1433 (docker compose up -d sql).</item>
+/// </list>
+/// Override with WAVELENGTH_TEST_HOST=iisexpress|docker. WAVELENGTH_TEST_SQL overrides the docker-mode SQL Server.
 /// </summary>
 public class WavelengthFactory : IAsyncLifetime
 {
@@ -24,9 +29,24 @@ public class WavelengthFactory : IAsyncLifetime
     public string BaseUrl { get; private set; } = "";
     private string _container = "";
 
+    private Process? _iisExpress;
+
+    public static readonly bool UseIisExpress =
+        (Environment.GetEnvironmentVariable("WAVELENGTH_TEST_HOST") ?? (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "iisexpress" : "docker"))
+        .Equals("iisexpress", StringComparison.OrdinalIgnoreCase);
+
     private const string Sa = "User Id=sa;Password=Wavelength!2026;TrustServerCertificate=True;MultipleActiveResultSets=True";
-    private string HostSql => (Environment.GetEnvironmentVariable("WAVELENGTH_TEST_SQL") ?? "Server=localhost,1433") + ";" + Sa + ";Database=" + DatabaseName;
-    private string AppSql => $"Data Source=host.docker.internal,1433;Initial Catalog={DatabaseName};User Id=sa;Password=Wavelength!2026;MultipleActiveResultSets=True";
+    private const string LocalDb = @"Server=(localdb)\MSSQLLocalDB;Integrated Security=True;TrustServerCertificate=True;MultipleActiveResultSets=True";
+
+    /// <summary>Connection string the tests use to check the database.</summary>
+    private string HostSql => UseIisExpress
+        ? LocalDb + ";Database=" + DatabaseName
+        : (Environment.GetEnvironmentVariable("WAVELENGTH_TEST_SQL") ?? "Server=localhost,1433") + ";" + Sa + ";Database=" + DatabaseName;
+
+    /// <summary>Connection string handed to the app (WAVELENGTH_DB, read by AppDbContext).</summary>
+    private string AppSql => UseIisExpress
+        ? $@"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog={DatabaseName};Integrated Security=True;MultipleActiveResultSets=True"
+        : $"Data Source=host.docker.internal,1433;Initial Catalog={DatabaseName};User Id=sa;Password=Wavelength!2026;MultipleActiveResultSets=True";
 
     public static string RepoRoot
     {
@@ -61,16 +81,10 @@ public class WavelengthFactory : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        await BuildLock.WaitAsync();
-        try
-        {
-            if (!_built) { await Docker($"build -q -t {Image} -f docker/Dockerfile ."); _built = true; }
-        }
-        finally { BuildLock.Release(); }
-
         var port = FreePort();
         BaseUrl = $"http://localhost:{port}";
-        _container = await Docker($"run -d --rm --add-host=host.docker.internal:host-gateway -p {port}:8080 -e \"WAVELENGTH_DB={AppSql}\" {Image}");
+        if (UseIisExpress) StartIisExpress(port);
+        else await StartContainer(port);
 
         // the first request creates and seeds the database
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
@@ -83,14 +97,75 @@ public class WavelengthFactory : IAsyncLifetime
                 if (res.StatusCode == HttpStatusCode.OK) break;
             }
             catch (Exception) when (DateTime.UtcNow < until) { }
-            if (DateTime.UtcNow > until) throw new TimeoutException("The app did not start: " + await Docker($"logs --tail 30 {_container}"));
+            if (DateTime.UtcNow > until)
+                throw new TimeoutException("The app did not start: " + (UseIisExpress ? "IIS Express on " + BaseUrl : await Docker($"logs --tail 30 {_container}")));
             await Task.Delay(1000);
+        }
+    }
+
+    private async Task StartContainer(int port)
+    {
+        await BuildLock.WaitAsync();
+        try
+        {
+            if (!_built) { await Docker($"build -q -t {Image} -f docker/Dockerfile ."); _built = true; }
+        }
+        finally { BuildLock.Release(); }
+        _container = await Docker($"run -d --rm --add-host=host.docker.internal:host-gateway -p {port}:8080 -e \"WAVELENGTH_DB={AppSql}\" {Image}");
+    }
+
+    // ---------- IIS Express + LocalDB (Windows, no Docker) ----------
+
+    private static readonly object UploadsLock = new();
+    private static bool _uploadsCleanupRegistered;
+
+    private void StartIisExpress(int port)
+    {
+        var web = Path.Combine(RepoRoot, "Wavelength.Web");
+        if (!File.Exists(Path.Combine(web, "bin", "Wavelength.Web.dll")))
+            throw new InvalidOperationException("Build the solution first (Visual Studio: Build > Build Solution, or msbuild Wavelength.sln): Wavelength.Web\\bin\\Wavelength.Web.dll is missing.");
+        var exe = new[]
+        {
+            Environment.GetEnvironmentVariable("IISEXPRESS_PATH"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "IIS Express", "iisexpress.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "IIS Express", "iisexpress.exe"),
+        }.FirstOrDefault(p => !string.IsNullOrEmpty(p) && File.Exists(p))
+            ?? throw new FileNotFoundException("iisexpress.exe not found (install Visual Studio's ASP.NET workload or set IISEXPRESS_PATH).");
+
+        RegisterUploadsCleanup(Path.Combine(web, "uploads"));
+        var psi = new ProcessStartInfo(exe, $"/path:\"{web}\" /port:{port} /clr:v4.0 /systray:false")
+        {
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
+        };
+        psi.Environment["WAVELENGTH_DB"] = AppSql; // inherited by the app (AppDbContext.DefaultConnection)
+        _iisExpress = Process.Start(psi)!;
+        _iisExpress.OutputDataReceived += (_, _) => { };
+        _iisExpress.ErrorDataReceived += (_, _) => { };
+        _iisExpress.BeginOutputReadLine();
+        _iisExpress.BeginErrorReadLine();
+    }
+
+    /// <summary>Files the tests upload land in Wavelength.Web\\uploads; they are deleted when the test run ends.</summary>
+    private static void RegisterUploadsCleanup(string dir)
+    {
+        lock (UploadsLock)
+        {
+            if (_uploadsCleanupRegistered) return;
+            _uploadsCleanupRegistered = true;
+            var before = Directory.Exists(dir) ? Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories).ToHashSet() : new HashSet<string>();
+            AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+            {
+                if (!Directory.Exists(dir)) return;
+                foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+                    if (!before.Contains(f)) try { File.Delete(f); } catch { /* best effort */ }
+            };
         }
     }
 
     async Task IAsyncLifetime.DisposeAsync()
     {
         if (_container != "") try { await Docker($"rm -f {_container}", 60); } catch { /* already gone */ }
+        if (_iisExpress != null) try { _iisExpress.Kill(true); _iisExpress.Dispose(); } catch { /* already gone */ }
         try
         {
             await using var db = NewDb();
