@@ -88,16 +88,18 @@ There is no mail server: the "forgot password" page shows the reset link directl
 
 ## Tests
 
-`tests/Wavelength.Tests` holds ~250 black-box tests (xUnit, .NET 8). Each test class starts the MVC 5 app in a
-Docker container with its own fresh, seeded SQL Server database and drives it over HTTP like a browser
+`tests/Wavelength.Tests` holds 247 black-box tests (xUnit, .NET 8). Each test class starts the MVC 5 app (IIS Express
+on Windows, a Docker container elsewhere) with its own fresh, seeded SQL Server database and drives it over HTTP like a browser
 (forms with antiforgery tokens, cookies, uploads, the JSON API), then checks the database. They cover every page,
 the role matrix, the play sequence, the upload → review → publish/reject workflow, the track state machine,
 moderation, administration and account deletion.
 
 ```bash
-docker compose up -d sql
-dotnet test tests/Wavelength.Tests
+dotnet test tests/Wavelength.Tests        # Windows: after building the solution; uses IIS Express + LocalDB, no Docker
+docker compose up -d sql && dotnet test tests/Wavelength.Tests   # macOS/Linux: uses Docker
 ```
+
+GitHub Actions runs the full suite on Windows on every push.
 
 `tools/check.sh` compiles the C# code **and all Razor views** for .NET Framework 4.8 / C# 7.3 on any OS
 (`tools/razor-gen` turns the views into C# the same way ASP.NET does at runtime).

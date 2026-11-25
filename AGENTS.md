@@ -40,12 +40,18 @@ tools/check.sh                       # compile C# + ALL Razor views for .NET Fra
 download them from nuget.org into `packages/<Id>.<Version>/` (the `.nupkg` is a zip), using the versions listed in
 `Wavelength.Web/packages.config`. Mono's `nuget` crashes under x86 emulation on Apple Silicon.
 
-**Tests** (black-box, .NET 8, need Docker):
+**Tests** (black-box, .NET 8 SDK; each test class starts the app with its own fresh, seeded database):
 
 ```bash
+# Windows, no Docker: build the solution first (Visual Studio or msbuild), then
+dotnet test tests/Wavelength.Tests   # app in IIS Express + database in LocalDB, classes run one after another
+
+# macOS/Linux: app in a Mono container
 docker compose up -d sql
-dotnet test tests/Wavelength.Tests   # ~2 min; each test class starts the app in its own container with a fresh DB
+dotnet test tests/Wavelength.Tests
 ```
+
+CI (`.github/workflows/windows.yml`) builds with MSBuild and runs the whole suite on Windows on every push.
 
 **Before you say a change is done:** `tools/check.sh` must print `Build succeeded` with 0 errors, and
 `dotnet test tests/Wavelength.Tests` must pass. Views are compiled at runtime by ASP.NET, so on Windows a view
@@ -80,6 +86,10 @@ Demo accounts (password `Wavelength123!`): `admin@`, `mod@`, `kora@` (artist), `
 - Return `NotFoundView()` / `ForbiddenView()` from `BaseController`, not `HttpNotFound()`.
 - Don't name an action `Profile`, `Server`, `Audit` or `File`; those hide `Controller`/`BaseController` members.
   Use another method name plus `[ActionName("…")]`.
+- **Files are UTF-8.** Web.config sets `fileEncoding="utf-8"` and views are saved with a UTF-8 BOM; keep it that way
+  (otherwise Windows reads views as Windows-1252, special characters like ♪ ✓ → break, and Razor can print `@Model…` as text).
+- **Binding redirects:** when you add or upgrade a NuGet package, make sure Web.config has the binding redirects
+  Visual Studio would add (e.g. `Microsoft.Web.Infrastructure` 2.0). Mono ignores missing redirects, Windows fails with HTTP 500.
 - Don't reference anything from a CDN. New libraries go into `Scripts/` or `Content/` as files.
 
 ## Conventions
