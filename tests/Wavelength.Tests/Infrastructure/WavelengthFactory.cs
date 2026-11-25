@@ -149,7 +149,7 @@ public class WavelengthFactory : IAsyncLifetime
         };
         psi.Environment["WAVELENGTH_DB"] = AppSql; // inherited by the app (AppDbContext.DefaultConnection)
         _iisExpress = Process.Start(psi)!;
-        _iisExpress.OutputDataReceived += (_, e) => { if (e.Data != null) { _iisLog.Enqueue(e.Data); while (_iisLog.Count > 300) _iisLog.TryDequeue(out _); } };
+        _iisExpress.OutputDataReceived += (_, e) => { if (e.Data != null) { _iisLog.Enqueue(e.Data); while (_iisLog.Count > 300) _iisLog.TryDequeue(out string? _dropped); } };
         _iisExpress.ErrorDataReceived += (_, e) => { if (e.Data != null) _iisLog.Enqueue("ERR " + e.Data); };
         _iisExpress.BeginOutputReadLine();
         _iisExpress.BeginErrorReadLine();
