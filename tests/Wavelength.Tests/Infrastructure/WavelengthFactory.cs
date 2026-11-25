@@ -83,7 +83,12 @@ public class WavelengthFactory : IAsyncLifetime
     {
         var port = FreePort();
         BaseUrl = $"http://localhost:{port}";
-        if (UseIisExpress) StartIisExpress(port);
+        if (UseIisExpress)
+        {
+            await IisExpressSlot.WaitAsync();
+            _holdsSlot = true;
+            StartIisExpress(port);
+        }
         else await StartContainer(port);
 
         // the first request creates and seeds the database
@@ -117,6 +122,10 @@ public class WavelengthFactory : IAsyncLifetime
     // ---------- IIS Express + LocalDB (Windows, no Docker) ----------
 
     private static readonly object UploadsLock = new();
+    // one IIS Express at a time: several instances serving the same folder in parallel were unstable
+    private static readonly SemaphoreSlim IisExpressSlot = new(1, 1);
+    private bool _holdsSlot;
+    private readonly System.Collections.Concurrent.ConcurrentQueue<string> _iisLog = new();
     private static bool _uploadsCleanupRegistered;
 
     private void StartIisExpress(int port)
@@ -140,8 +149,8 @@ public class WavelengthFactory : IAsyncLifetime
         };
         psi.Environment["WAVELENGTH_DB"] = AppSql; // inherited by the app (AppDbContext.DefaultConnection)
         _iisExpress = Process.Start(psi)!;
-        _iisExpress.OutputDataReceived += (_, _) => { };
-        _iisExpress.ErrorDataReceived += (_, _) => { };
+        _iisExpress.OutputDataReceived += (_, e) => { if (e.Data != null) { _iisLog.Enqueue(e.Data); while (_iisLog.Count > 300) _iisLog.TryDequeue(out _); } };
+        _iisExpress.ErrorDataReceived += (_, e) => { if (e.Data != null) _iisLog.Enqueue("ERR " + e.Data); };
         _iisExpress.BeginOutputReadLine();
         _iisExpress.BeginErrorReadLine();
     }
@@ -166,7 +175,21 @@ public class WavelengthFactory : IAsyncLifetime
     async Task IAsyncLifetime.DisposeAsync()
     {
         if (_container != "") try { await Docker($"rm -f {_container}", 60); } catch { /* already gone */ }
-        if (_iisExpress != null) try { _iisExpress.Kill(true); _iisExpress.Dispose(); } catch { /* already gone */ }
+        if (_iisExpress != null)
+        {
+            if (_iisExpress.HasExited)
+            {
+                // it stopped on its own: keep its output for diagnosis (uploaded with the CI test results)
+                var dir = Path.Combine(RepoRoot, "tests", "Wavelength.Tests", "TestResults");
+                Directory.CreateDirectory(dir);
+                File.WriteAllText(Path.Combine(dir, $"iisexpress-{new Uri(BaseUrl).Port}.log"),
+                    $"exit code {_iisExpress.ExitCode} at {_iisExpress.ExitTime:O}\n" + string.Join("\n", _iisLog));
+                Console.WriteLine($"IIS Express on {BaseUrl} exited early with code {_iisExpress.ExitCode}");
+            }
+            try { _iisExpress.Kill(true); } catch { /* already gone */ }
+            _iisExpress.Dispose();
+        }
+        if (_holdsSlot) { _holdsSlot = false; IisExpressSlot.Release(); }
         try
         {
             await using var db = NewDb();
