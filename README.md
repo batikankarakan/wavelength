@@ -11,6 +11,8 @@ brutalist design as the Task 1 landing page.
 | Auth | OWIN cookie authentication, PBKDF2 password hashing, role-based `[Authorize(Roles = ...)]` |
 | Front end | Razor views + HTML helpers, Tailwind CSS (compiled), jQuery 3.7 (+ validation, unobtrusive AJAX), Vue 3 (player) |
 
+> **Changing the code?** Read [AGENTS.md](AGENTS.md) first: build/test commands, the MVC 5 / C# 7.3 rules and the design conventions (coding agents read it automatically).
+
 ## Run it (Windows, Visual Studio 2019/2022)
 
 1. Open `Wavelength.sln`.
