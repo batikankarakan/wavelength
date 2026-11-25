@@ -1,0 +1,119 @@
+@model AdminDashboardVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.Title = "Admin dashboard";
+    var pending = Model.Status(TrackStatus.Pending);
+    var kpis = new[]
+    {
+        new { Label = "Users", Value = Model.TotalUsers, Note = "+" + Model.NewUsers7d + " this week", Color = "bg-volt", Href = User.IsAdmin() ? "/admin/users" : null },
+        new { Label = "Published tracks", Value = Model.Status(TrackStatus.Published), Note = pending + " pending · " + Model.Status(TrackStatus.Hidden) + " hidden", Color = "bg-mint", Href = (string)null },
+        new { Label = "Plays · 7 days", Value = Model.Plays7d, Note = Model.Plays30d + " in 30 days · " + Fmt.Count(Model.TotalPlays) + " all time", Color = "bg-white", Href = (string)null },
+        new { Label = "Open reports", Value = Model.OpenReports, Note = Model.OpenReports == 0 ? "All clear" : "Needs attention", Color = Model.OpenReports > 0 ? "bg-flame text-paper" : "bg-white", Href = "/admin/reports" },
+    };
+    var maxGenre = Math.Max(1, Model.TopGenres.Count == 0 ? 1 : Model.TopGenres.Max(g => g.Value));
+    var roleColors = new[]
+    {
+        Tuple.Create(AppRoles.Listener, "#8CF5C0"), Tuple.Create(AppRoles.Artist, "#FFE500"),
+        Tuple.Create(AppRoles.Moderator, "#2B3BFF"), Tuple.Create(AppRoles.Admin, "#FF4A1C"),
+    };
+}
+@Html.Partial("_AdminNav", new AdminNavVm { Active = "dashboard", Title = "Dashboard.", Sub = "Users, tracks and plays at a glance. Every number comes from the database, charts are built from listening_history." })
+
+<section class="section !pt-12">
+    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        @for (var i = 0; i < kpis.Length; i++)
+        {
+            var k = kpis[i];
+            <div data-reveal="@(i * 80)" class="brut @k.Color flex flex-col p-6">
+                <p class="eyebrow text-xs">@k.Label</p>
+                <p class="display mt-3 text-7xl leading-none" data-count="@k.Value">@k.Value</p>
+                <p class="mt-3 font-mono text-xs">@k.Note</p>
+                @if (k.Href != null) { <a href="@k.Href" class="mt-4 self-start font-mono text-xs font-bold uppercase underline decoration-2">Open →</a> }
+            </div>
+        }
+    </div>
+
+    @if (pending > 0 || Model.OpenReports > 0 || Model.UnreadMessages > 0)
+    {
+        <div data-reveal class="mt-8 flex flex-wrap items-center gap-4 border-2 border-ink bg-volt p-5 shadow-brut">
+            <span class="display text-3xl">To do</span>
+            @if (pending > 0) { <a href="/admin/review" class="btn-ink btn-sm">@pending tracks to review →</a> }
+            @if (Model.OpenReports > 0) { <a href="/admin/reports" class="btn-flame btn-sm">@Model.OpenReports open reports →</a> }
+            @if (User.IsAdmin() && Model.UnreadMessages > 0) { <a href="/admin/messages?status=new" class="btn-paper btn-sm">@Model.UnreadMessages new messages →</a> }
+        </div>
+    }
+
+    <div class="mt-10 grid gap-8 lg:grid-cols-3">
+        <div data-reveal class="brut bg-white p-6 lg:col-span-2">
+            <div class="flex flex-wrap items-end justify-between gap-2">
+                <div><p class="eyebrow text-xs">/ Listening history</p><h2 class="display mt-1 text-4xl">Plays per day</h2></div>
+                <p class="font-mono text-xs">Last 30 days · logged-in listeners</p>
+            </div>
+            <div class="mt-10">@Html.Partial("_Bars", new BarsVm { Points = Model.PlaysPerDay, Color = "#2B3BFF", Height = 220, ShowLabels = true })</div>
+        </div>
+        <div data-reveal="100" class="brut bg-white p-6">
+            <p class="eyebrow text-xs">/ Accounts</p><h2 class="display mt-1 text-4xl">Users by role</h2>
+            <ul class="mt-6 space-y-3">
+                @foreach (var rc in roleColors)
+                {
+                    var count = Model.Role(rc.Item1);
+                    var pct = Model.TotalUsers == 0 ? 0 : count * 100 / Model.TotalUsers;
+                    <li>
+                        <div class="flex justify-between font-mono text-sm font-bold uppercase"><span>@rc.Item1</span><span>@count</span></div>
+                        <div class="mt-1 h-5 border-2 border-ink bg-paper"><div class="h-full border-r-2 border-ink" style="width:@(Math.Max(pct, 2))%;background:@rc.Item2"></div></div>
+                    </li>
+                }
+            </ul>
+            <p class="mt-6 font-mono text-xs">@Model.BannedUsers banned · @Model.NewUsers7d joined in the last 7 days</p>
+        </div>
+    </div>
+
+    <div class="mt-8 grid gap-8 lg:grid-cols-2">
+        <div data-reveal class="brut bg-white p-6">
+            <p class="eyebrow text-xs">/ Growth</p><h2 class="display mt-1 text-4xl">New signups per week</h2>
+            <div class="mt-10">@Html.Partial("_Bars", new BarsVm { Points = Model.SignupsPerWeek, Color = "#FFE500", Height = 180, ShowLabels = true })</div>
+        </div>
+        <div data-reveal="100" class="brut bg-white p-6">
+            <p class="eyebrow text-xs">/ Catalog</p><h2 class="display mt-1 text-4xl">Top genres by plays</h2>
+            <ul class="mt-6 space-y-3">
+                @foreach (var g in Model.TopGenres)
+                {
+                    <li class="flex items-center gap-3">
+                        <span class="w-24 shrink-0 truncate font-mono text-xs font-bold uppercase">@g.Label</span>
+                        <div class="h-7 flex-1 border-2 border-ink bg-paper"><div class="bar-grow h-full border-r-2 border-ink" style="width:@(Math.Max(2, g.Value * 100 / maxGenre))%;background:@g.Color;transform-origin:left"></div></div>
+                        <span class="w-14 text-right font-mono text-xs font-bold">@Fmt.Count(g.Value)</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <div class="mt-8 grid gap-8 lg:grid-cols-3">
+        <div data-reveal class="brut bg-white lg:col-span-2">
+            <div class="flex items-center justify-between border-b-2 border-ink p-5">
+                <h2 class="display text-3xl">Recent actions</h2>
+                @if (User.IsAdmin()) { <a href="/admin/audit" class="font-mono text-xs font-bold uppercase underline">Full audit log →</a> }
+            </div>
+            @if (!Model.RecentAudit.Any()) { <p class="p-6 font-mono text-sm">No actions yet.</p> }
+            <ul>
+                @foreach (var a in Model.RecentAudit)
+                {
+                    <li class="flex flex-wrap items-center gap-3 border-b-2 border-ink px-5 py-3 last:border-b-0">
+                        <span class="status bg-paper">@a.Action</span>
+                        <span class="min-w-0 flex-1 truncate font-mono text-sm">@a.Target</span>
+                        <span class="font-mono text-xs text-ink/60">@a.Admin.DisplayName · @Fmt.Ago(a.CreatedAt)</span>
+                    </li>
+                }
+            </ul>
+        </div>
+        <div data-reveal="100" class="brut bg-cobalt p-6 text-paper">
+            <p class="eyebrow text-xs">/ Tracks by status</p>
+            <ul class="mt-4 space-y-2">
+                @foreach (var s in TrackStatus.All)
+                {
+                    <li class="flex items-center justify-between border-b-2 border-paper/20 pb-2 last:border-0"><span class="status status-@s @(s == "rejected" || s == "hidden" ? "" : "text-ink")">@s</span><span class="display text-3xl">@Model.Status(s)</span></li>
+                }
+            </ul>
+        </div>
+    </div>
+</section>

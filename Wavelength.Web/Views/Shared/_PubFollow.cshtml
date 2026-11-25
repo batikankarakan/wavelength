@@ -1,0 +1,17 @@
+@model PubFollowVm
+@if (Request.IsAuthenticated)
+{
+    if (User.UserId() != Model.UserId)
+    {
+        using (Html.BeginForm("Follow", "Social", new { userId = Model.UserId }, FormMethod.Post, new { @class = "inline" }))
+        {
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl">
+            <button class="@(Model.Following ? "btn-paper" : "btn-volt") @Model.Extra">@(Model.Following ? "✓ Following" : "＋ Follow")</button>
+        }
+    }
+}
+else
+{
+    <a href="/login?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl)" class="btn-volt @Model.Extra">＋ Follow</a>
+}

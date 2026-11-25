@@ -1,0 +1,11 @@
+@model LibraryHeroVm
+@* Shared page header for the listener pages: sticker, big display title with a rotated highlight, tabs. *@
+<section class="relative overflow-hidden border-b-2 border-ink page-top">
+  <div class="halftone absolute -right-16 top-16 hidden h-80 w-80 opacity-20 md:block"></div>
+  <div class="relative mx-auto max-w-7xl px-6">
+    <span class="sticker @Model.StickerColor">@Model.Sticker</span>
+    <h1 data-hop class="display mt-6 text-[clamp(3.5rem,9vw,8rem)]">@Model.Title <span class="inline-block -rotate-2 border-2 border-ink bg-volt px-3 shadow-brut">@Model.Highlight</span></h1>
+    @if (!string.IsNullOrEmpty(Model.Text)) { <p class="mt-5 max-w-2xl text-lg font-medium">@Model.Text</p> }
+    @Html.Partial("~/Views/Library/_LibraryNav.cshtml", Model.Active)
+  </div>
+</section>

@@ -1,0 +1,35 @@
+@model object
+@{
+    var code = Model is int ? (int)Model : 500;
+    string title, line, color;
+    if (code == 403) { title = "Backstage only."; line = "You don't have access to this page. Log in with the right account or head back to the music."; color = "bg-flame text-paper"; }
+    else if (code == 404) { title = "Track not found."; line = "This page skipped. Maybe it was moved, hidden or never existed."; color = "bg-volt"; }
+    else if (code == 401) { title = "Who's there?"; line = "Log in to see this page."; color = "bg-volt"; }
+    else { title = "Feedback loop."; line = "Something went wrong on our side. Try again in a moment."; color = "bg-cobalt text-paper"; }
+    ViewBag.Title = code + " " + title;
+}
+<section class="relative overflow-hidden border-b-2 border-ink page-top">
+  <div class="halftone absolute -right-20 top-20 hidden h-[28rem] w-[28rem] opacity-20 lg:block"></div>
+  <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-6 pb-24 lg:grid-cols-[1.3fr_1fr]">
+    <div>
+      <span class="sticker @color">Error @code</span>
+      <h1 data-hop class="display mt-8 text-[clamp(4.5rem,12vw,10rem)]">@title</h1>
+      <p class="mt-6 max-w-lg text-xl font-medium">@line</p>
+      <div class="mt-10 flex flex-wrap gap-4">
+        <a href="/" class="btn-volt">← Back home</a>
+        <a href="/explore" class="btn-paper">Explore music</a>
+        @if (code == 403 && !Request.IsAuthenticated) { <a href="/login" class="btn-ink">Log in</a> }
+      </div>
+    </div>
+    <div class="relative mx-auto w-full max-w-sm" data-tilt="6">
+      <div class="brut p-5 @color">
+        <div class="relative flex aspect-square items-center justify-center overflow-hidden border-2 border-ink bg-paper/20">
+          <div class="record relative flex h-[82%] w-[82%] items-center justify-center rounded-full border-2 border-ink">
+            <div class="flex h-[34%] w-[34%] items-center justify-center rounded-full border-2 border-ink bg-paper"><span class="display text-4xl text-ink">@code</span></div>
+          </div>
+        </div>
+        <div class="mt-4 h-10 eq-paused"><div class="flex h-full items-end gap-1.5">@for (var i = 0; i < 20; i++) { <i class="bar" style="height:@(10 + (i * 37 % 60))%"></i> }</div></div>
+      </div>
+    </div>
+  </div>
+</section>

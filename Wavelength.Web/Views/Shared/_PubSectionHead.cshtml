@@ -1,0 +1,8 @@
+@model PubSectionHeadVm
+<div data-reveal class="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+    <div>
+        <span class="eyebrow">/ @Model.Eyebrow</span>
+        <h2 data-hop class="display mt-2 text-5xl md:text-7xl">@Model.Title</h2>
+    </div>
+    @if (Model.Link != null) { <a href="@Model.Link" class="btn-paper btn-sm self-start md:self-auto">@(Model.LinkText ?? "See all") →</a> }
+</div>

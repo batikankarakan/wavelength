@@ -1,0 +1,16 @@
+@model Wavelength.Web.Models.AuthAsideVm
+<div class="relative hidden overflow-hidden border-r-2 border-ink lg:block @Model.Color">
+    <div class="halftone absolute inset-0 opacity-20"></div>
+    <div class="relative flex h-full flex-col justify-between p-12">
+        <span class="sticker self-start bg-paper text-ink">@Model.Sticker</span>
+        <div>
+            <h2 data-hop class="display text-[clamp(4rem,7vw,7.5rem)]">
+                <span class="block">@Model.Line1</span>
+                <span class="block"><span class="inline-block -rotate-2 border-2 border-ink bg-volt px-4 text-ink shadow-brut">@Model.Highlight</span></span>
+                <span class="block">@Model.Line3</span>
+            </h2>
+            <p class="mt-8 max-w-md text-xl font-medium">@Model.Text</p>
+        </div>
+        <div class="h-16"><div class="flex h-full items-end gap-1.5">@for (var i = 0; i < 30; i++) { <i class="bar !bg-current" style="animation-delay:@(-(i * 137 % 100) / 80.0)s;animation-duration:@(0.8 + (i * 53 % 70) / 100.0)s"></i> }</div></div>
+    </div>
+</div>

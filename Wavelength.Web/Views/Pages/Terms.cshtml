@@ -1,0 +1,70 @@
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.Title = "Terms and Privacy";
+    var sections = new[]
+    {
+        Tuple.Create("terms", "Terms of use", new[]
+        {
+            "Wavelength is a university project built for the Web Programming course. By creating an account you agree to use it in a respectful way.",
+            "You are responsible for what you post: tracks, playlists, comments and profile information.",
+            "We can hide content or suspend accounts that break these rules. Every moderation action is recorded in an audit log.",
+        }),
+        Tuple.Create("uploads", "Upload rules", new[]
+        {
+            "Only upload music you created or have the rights to share. No full copies of other people's songs.",
+            "Audio must be MP3, WAV, OGG or M4A and at most 20 MB. Covers must be JPG, PNG, WEBP or GIF and at most 4 MB.",
+            "Every new track starts as a draft, goes to the review queue when you submit it, and is published only after a moderator approves it.",
+            "If a track is rejected, the moderator writes a reason. You can edit the track and submit it again.",
+            "Tracks that are reported and found to break the rules are hidden from the public catalog.",
+        }),
+        Tuple.Create("community", "Community rules", new[]
+        {
+            "No spam, advertising, hate speech, harassment or personal information of other people in comments or profiles.",
+            "Use the report button on a track, comment or profile if you see something wrong. Moderators review every report.",
+        }),
+        Tuple.Create("privacy", "Privacy", new[]
+        {
+            "We store the information you give us: username, email, display name, optional bio and avatar. Passwords are stored only as a secure hash.",
+            "We store what you play (listening history), what you like and save, and who you follow. This is used for your library, charts, recommendations and artist statistics.",
+            "Artists see total plays, likes and followers for their own tracks. They do not see who you are from statistics.",
+            "Private playlists are visible only to you. You can clear your listening history at any time.",
+            "You can delete your account in Settings. This removes your profile, playlists, likes, history and comments.",
+            "Messages sent through the contact form are stored so the team can reply. We never sell or share your data.",
+        }),
+        Tuple.Create("cookies", "Cookies", new[]
+        {
+            "We use one cookie to keep you logged in and one to protect forms against cross-site request forgery. The player remembers your queue in your browser's session storage.",
+        }),
+    };
+    var numColors = new[] { "text-flame", "text-cobalt", "text-ink" };
+}
+<section class="relative overflow-hidden border-b-2 border-ink page-top">
+  <div class="mx-auto max-w-7xl px-6 pb-16">
+    <span class="sticker bg-paper">Legal stuff</span>
+    <h1 data-hop class="display mt-8 text-[clamp(4rem,11vw,9.5rem)]">Terms <span class="inline-block -rotate-2 border-2 border-ink bg-volt px-4 shadow-brut">&amp;</span> privacy.</h1>
+    <p class="mt-6 max-w-2xl text-xl font-medium">The short, readable version. Last updated @DateTime.UtcNow.ToString("MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture).</p>
+  </div>
+</section>
+<section class="section">
+  <div class="grid gap-10 lg:grid-cols-[16rem_1fr]">
+    <nav class="lg:sticky lg:top-28 lg:self-start" aria-label="Sections">
+      <ul class="brut divide-y-2 divide-ink bg-white">
+        @foreach (var s in sections) { <li><a href="#@s.Item1" class="block px-4 py-3 font-mono text-sm font-bold uppercase hover:bg-volt">→ @s.Item2</a></li> }
+      </ul>
+    </nav>
+    <div class="space-y-10">
+      @for (var i = 0; i < sections.Length; i++)
+      {
+        var s = sections[i];
+        <article id="@s.Item1" data-reveal class="brut scroll-mt-28 bg-white p-6 md:p-10">
+          <p class="display text-6xl leading-none @numColors[i % 3]">0@(i + 1)</p>
+          <h2 class="display mt-3 text-4xl md:text-5xl">@s.Item2</h2>
+          <ul class="mt-6 space-y-3">
+            @foreach (var b in s.Item3) { <li class="flex gap-3 text-lg font-medium"><span class="mt-2 h-3 w-3 shrink-0 border-2 border-ink bg-volt"></span><span>@b</span></li> }
+          </ul>
+        </article>
+      }
+      <p class="font-mono text-sm">Questions about these rules? <a href="/contact" class="font-bold underline hover:bg-volt">Contact us →</a></p>
+    </div>
+  </div>
+</section>

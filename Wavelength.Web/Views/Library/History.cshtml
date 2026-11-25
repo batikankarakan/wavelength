@@ -1,0 +1,91 @@
+@model HistoryVm
+@{
+    ViewBag.Title = "Listening history";
+    ViewBag.Nav = "library";
+    var ranges = new[] { Tuple.Create("today", "Today"), Tuple.Create("week", "7 days"), Tuple.Create("month", "30 days"), Tuple.Create("all", "All time") };
+    Func<string, string, int, string> link = (range, genre, page) =>
+    {
+        var g = genre == "~" ? Model.Genre : genre;
+        var q = new List<string> { "range=" + (range ?? Model.Range) };
+        if (!string.IsNullOrEmpty(g)) { q.Add("genre=" + Url.Encode(g)); }
+        if (page > 1) { q.Add("page=" + page); }
+        return "/history?" + string.Join("&", q);
+    };
+    Func<DateTime, string> dayLabel = d => d == DateTime.UtcNow.Date ? "Today" : d == DateTime.UtcNow.Date.AddDays(-1) ? "Yesterday" : d.ToString("dddd, d MMMM", System.Globalization.CultureInfo.InvariantCulture);
+    var genreItems = new List<SelectListItem> { new SelectListItem { Value = "", Text = "All genres" } };
+    genreItems.AddRange(Model.Genres.Select(g => new SelectListItem { Value = g.Slug, Text = g.Name, Selected = Model.Genre == g.Slug }));
+}
+@Html.Partial("~/Views/Library/_LibraryHero.cshtml", new LibraryHeroVm { Active = "history", Sticker = "History", StickerColor = "bg-flame text-paper", Title = "On", Highlight = "repeat.", Text = "Every track you played for 30 seconds or more. Only you can see this." })
+
+<section class="section !pt-12">
+  <div class="grid gap-6 sm:grid-cols-3">
+    <div class="brut bg-volt p-6" data-reveal><p class="display text-6xl" data-count="@Model.TotalPlays">@Model.TotalPlays</p><p class="eyebrow mt-2">Plays</p></div>
+    <div class="brut bg-white p-6" data-reveal="80"><p class="display text-6xl" data-count="@Model.TotalMinutes">@Model.TotalMinutes</p><p class="eyebrow mt-2">Minutes listened</p></div>
+    <div class="brut bg-cobalt p-6 text-paper" data-reveal="160"><p class="display text-6xl" data-count="@Model.UniqueTracks">@Model.UniqueTracks</p><p class="eyebrow mt-2">Different tracks</p></div>
+  </div>
+
+  <div class="mt-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="label">Range</p>
+      <div class="flex flex-wrap gap-2">
+        @foreach (var r in ranges)
+        {
+          <a href="@link(r.Item1, "~", 1)" class="chip @(Model.Range == r.Item1 ? "chip-on" : "chip-off")">@r.Item2</a>
+        }
+      </div>
+    </div>
+    <div class="flex flex-wrap items-end gap-3">
+      @using (Html.BeginForm("History", "Library", FormMethod.Get, new { @class = "flex items-end gap-2" }))
+      {
+        <input type="hidden" name="range" value="@Model.Range">
+        <div>
+          <label for="genre" class="label">Genre</label>
+          @Html.DropDownList("genre", genreItems, new { id = "genre", @class = "field !py-2 md:w-48", onchange = "this.form.submit()" })
+        </div>
+        <noscript><button class="btn-paper btn-sm">Filter</button></noscript>
+      }
+      @using (Html.BeginForm("ClearHistory", "Library", FormMethod.Post, new { data_confirm = "Clear your whole listening history? This cannot be undone." }))
+      {
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn-flame btn-sm">✕ Clear history</button>
+      }
+    </div>
+  </div>
+
+  <div class="mt-10 space-y-10">
+    @if (!Model.Days.Any())
+    {
+      @Ui.EmptyState("No plays in this range. Press play on something and it will show up here.")
+    }
+    @foreach (var day in Model.Days)
+    {
+      <div data-reveal>
+        <div class="mb-4 flex items-baseline justify-between gap-4 border-b-2 border-ink pb-2">
+          <h2 class="display text-4xl">@dayLabel(day.Day)</h2>
+          <span class="font-mono text-xs uppercase">@day.Entries.Count plays</span>
+        </div>
+        <div class="brut bg-paper" data-tracklist>
+          @foreach (var e in day.Entries)
+          {
+            var t = e.Track;
+            <div class="group flex items-center gap-3 border-b-2 border-ink p-3 transition last:border-b-0 hover:bg-volt md:gap-4" data-track-row="@t.Id">
+              <span class="w-14 shrink-0 font-mono text-sm font-bold">@e.PlayedAt.ToString("HH:mm")</span>
+              <button type="button" data-play="@t.Id" class="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden border-2 border-ink" style="background:@t.Color" aria-label="Play @t.Title">
+                @if (!string.IsNullOrEmpty(t.CoverUrl)) { <img src="@t.CoverUrl" alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover"> }
+                <span class="relative flex h-7 w-7 items-center justify-center border-2 border-ink bg-paper text-xs" data-play-icon>▶</span>
+              </button>
+              <span class="min-w-0 flex-1">
+                <a href="/tracks/@t.Id" class="display block truncate text-xl hover:underline md:text-2xl">@t.Title</a>
+                <a href="/artists/@t.ArtistId" class="block truncate font-mono text-xs hover:underline">@t.Artist</a>
+              </span>
+              @if (t.Genre != null) { <span class="sticker hidden bg-paper md:block">@t.Genre</span> }
+              <span class="hidden font-mono text-xs sm:block" title="Seconds listened">@Fmt.Duration(e.SecondsListened) / @Fmt.Duration(t.DurationSec)</span>
+              <button type="button" data-like="@t.Id" aria-pressed="@(t.Liked ? "true" : "false")" class="flex h-9 w-9 shrink-0 items-center justify-center border-2 border-ink font-mono text-lg transition hover:scale-110 @(t.Liked ? "bg-flame text-paper" : "bg-paper")" aria-label="Like @t.Title">♥</button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+  @Html.Partial("_Pager", new PagerVm { Page = Model.Page, TotalPages = Model.TotalPages, Url = p => link(null, "~", p) })
+</section>

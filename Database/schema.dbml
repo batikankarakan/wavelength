@@ -1,0 +1,240 @@
+// Wavelength database schema (paste into https://dbdiagram.io)
+
+Table users {
+  id int [pk, note: 'Unique user ID']
+  username varchar(30) [unique, not null, note: 'Unique username']
+  email varchar(120) [unique, not null, note: 'Email address used to log in']
+  password_hash varchar(255) [not null, note: 'Password hash (plain passwords are never stored)']
+  display_name varchar(60) [not null, note: 'Name shown on the profile']
+  avatar_url varchar(255) [note: 'Profile picture path']
+  bio varchar(300) [note: 'Short biography']
+  role varchar(20) [not null, note: 'listener, artist, moderator or admin']
+  is_active boolean [not null, note: 'Whether the account is active (false for banned users)']
+  created_at datetime [not null, note: 'Registration date']
+  Note: 'Account of everyone who registers (listener, artist, moderator, admin). The role field decides which pages the user can access.'
+}
+
+Table artist_profiles {
+  id int [pk, note: 'Unique artist profile ID']
+  user_id int [unique, not null, note: 'User who owns the profile']
+  stage_name varchar(80) [not null, note: 'Stage name']
+  verified boolean [not null, note: 'Whether an admin verified the artist']
+  banner_url varchar(255) [note: 'Profile banner image']
+  country varchar(60) [note: 'Country']
+  website varchar(150) [note: 'Personal website']
+  Note: 'Extra profile data for users with the artist role. A user has at most one artist profile.'
+}
+
+Table follows {
+  follower_id int [note: 'Following user']
+  followed_id int [note: 'Followed user']
+  created_at datetime [not null, note: 'Date the follow started']
+
+  indexes {
+    (follower_id, followed_id) [pk]
+  }
+  Note: 'Users following each other (mainly artists). Creates a many-to-many relationship between users.'
+}
+
+Table notifications {
+  id int [pk, note: 'Unique notification ID']
+  user_id int [not null, note: 'User receiving the notification']
+  type varchar(30) [not null, note: 'Notification type (follow, track_approved, comment...)']
+  payload varchar(500) [not null, note: 'Notification content (JSON text)']
+  is_read boolean [not null, note: 'Whether it was read']
+  created_at datetime [not null, note: 'Creation date']
+  Note: 'Notifications sent to a user (new follower, track approved, new comment, etc.).'
+}
+
+Table albums {
+  id int [pk, note: 'Unique album ID']
+  artist_id int [not null, note: 'Artist of the album']
+  title varchar(100) [not null, note: 'Album title']
+  cover_url varchar(255) [note: 'Album cover image']
+  release_date date [not null, note: 'Release date']
+  type varchar(10) [not null, note: 'single, ep or album']
+  Note: 'Groups of tracks an artist releases as a single, EP or album.'
+}
+
+Table tracks {
+  id int [pk, note: 'Unique track ID']
+  artist_id int [not null, note: 'Artist who uploaded the track']
+  album_id int [note: 'Album of the track (empty for singles)']
+  title varchar(120) [not null, note: 'Track title']
+  audio_url varchar(255) [not null, note: 'Audio file path']
+  cover_url varchar(255) [note: 'Track cover image']
+  duration_sec int [not null, note: 'Duration in seconds']
+  lyrics text [note: 'Song lyrics']
+  status varchar(12) [not null, note: 'draft, pending, published, rejected or hidden']
+  plays_count int [not null, note: 'Total play count']
+  created_at datetime [not null, note: 'Upload date']
+  Note: 'The core table of the platform: every uploaded track. The status field follows the approval flow (draft, pending, published, rejected).'
+}
+
+Table genres {
+  id int [pk, note: 'Unique genre ID']
+  name varchar(40) [unique, not null, note: 'Genre name']
+  slug varchar(40) [unique, not null, note: 'Short name used in the URL']
+  color varchar(7) [not null, note: 'Color code used in the interface']
+  Note: 'Music genres (Electronic, Hip-Hop, Lo-fi...). Managed by admins.'
+}
+
+Table track_genres {
+  track_id int [note: 'Track']
+  genre_id int [note: 'Genre']
+
+  indexes {
+    (track_id, genre_id) [pk]
+  }
+  Note: 'Junction table for the many-to-many relationship between tracks and genres. A track can belong to several genres.'
+}
+
+Table playlists {
+  id int [pk, note: 'Unique playlist ID']
+  owner_id int [not null, note: 'User who created the playlist']
+  title varchar(100) [not null, note: 'Playlist title']
+  description varchar(300) [note: 'Playlist description']
+  cover_url varchar(255) [note: 'Playlist cover']
+  is_public boolean [not null, note: 'Whether it is public']
+  created_at datetime [not null, note: 'Creation date']
+  Note: 'Playlists created by users. Can be public or private.'
+}
+
+Table playlist_tracks {
+  playlist_id int [note: 'Playlist']
+  track_id int [note: 'Track']
+  position int [not null, note: 'Position in the playlist']
+  added_at datetime [not null, note: 'Date added']
+
+  indexes {
+    (playlist_id, track_id) [pk]
+  }
+  Note: 'Many-to-many relationship between playlists and tracks. The position field keeps the track order.'
+}
+
+Table track_likes {
+  user_id int [note: 'User who liked']
+  track_id int [note: 'Liked track']
+  created_at datetime [not null, note: 'Like date']
+
+  indexes {
+    (user_id, track_id) [pk]
+  }
+  Note: 'Tracks a user liked (saved). Forms the "Liked songs" library.'
+}
+
+Table saved_albums {
+  user_id int [note: 'User who saved']
+  album_id int [note: 'Saved album']
+  saved_at datetime [not null, note: 'Date saved']
+
+  indexes {
+    (user_id, album_id) [pk]
+  }
+  Note: 'Albums a user saved to their library.'
+}
+
+Table saved_playlists {
+  user_id int [note: 'User who saved']
+  playlist_id int [note: 'Saved playlist']
+  saved_at datetime [not null, note: 'Date saved']
+
+  indexes {
+    (user_id, playlist_id) [pk]
+  }
+  Note: 'Public playlists owned by others that a user saved to their library.'
+}
+
+Table listening_history {
+  id int [pk, note: 'Unique record ID']
+  user_id int [not null, note: 'Listening user']
+  track_id int [not null, note: 'Track that was played']
+  played_at datetime [not null, note: 'Time of the play']
+  seconds_listened int [not null, note: 'Seconds listened']
+  Note: 'Which user listened to which track and when. Play counts, charts and recommendations are fed from here.'
+}
+
+Table share_links {
+  id int [pk, note: 'Unique link ID']
+  track_id int [not null, note: 'Shared track']
+  created_by int [not null, note: 'User who created the link']
+  token varchar(32) [unique, not null, note: 'Unique code used in the URL']
+  click_count int [not null, note: 'Click count']
+  created_at datetime [not null, note: 'Creation date']
+  Note: 'Short links generated to share a track. Click counts are tracked.'
+}
+
+Table comments {
+  id int [pk, note: 'Unique comment ID']
+  user_id int [not null, note: 'User who wrote the comment']
+  track_id int [not null, note: 'Track that was commented on']
+  parent_id int [note: 'Comment being replied to (empty for top-level)']
+  body text [not null, note: 'Comment text']
+  is_hidden boolean [not null, note: 'Whether a moderator hid it']
+  created_at datetime [not null, note: 'Date written']
+  Note: 'Comments on tracks. The parent field allows replies to comments (self-referencing table).'
+}
+
+Table reports {
+  id int [pk, note: 'Unique report ID']
+  reporter_id int [not null, note: 'User who filed the report']
+  track_id int [note: 'Reported track']
+  comment_id int [note: 'Reported comment']
+  reported_user_id int [note: 'Reported user']
+  reason varchar(300) [not null, note: 'Reason for the report']
+  status varchar(12) [not null, note: 'open, resolved or dismissed']
+  handled_by int [note: 'Moderator who handled the report']
+  Note: 'Reports users file about a track, comment or user. Exactly one of the target fields is filled in each report.'
+}
+
+Table audit_logs {
+  id int [pk, note: 'Unique record ID']
+  admin_id int [not null, note: 'Admin/moderator who performed the action']
+  action varchar(60) [not null, note: 'Action performed (ban_user, approve_track...)']
+  target varchar(120) [not null, note: 'Target of the action']
+  created_at datetime [not null, note: 'Time of the action']
+  Note: 'Record of actions taken by admins and moderators (who, when, what changed).'
+}
+
+Table contact_messages {
+  id int [pk, note: 'Unique message ID']
+  name varchar(80) [not null, note: 'Name of the sender']
+  email varchar(120) [not null, note: 'Email of the sender']
+  topic varchar(30) [not null, note: 'Topic (general, feedback, bug, collaboration)']
+  message text [not null, note: 'Message text']
+  status varchar(10) [not null, note: 'new, read or replied']
+  created_at datetime [not null, note: 'Date sent']
+  Note: 'Messages sent from the contact page. Visitors can write too, so it is not linked to the users table.'
+}
+
+Ref: artist_profiles.user_id - users.id
+Ref: follows.follower_id > users.id
+Ref: follows.followed_id > users.id
+Ref: notifications.user_id > users.id
+Ref: albums.artist_id > artist_profiles.id
+Ref: tracks.artist_id > artist_profiles.id
+Ref: tracks.album_id > albums.id
+Ref: track_genres.track_id > tracks.id
+Ref: track_genres.genre_id > genres.id
+Ref: playlists.owner_id > users.id
+Ref: playlist_tracks.playlist_id > playlists.id
+Ref: playlist_tracks.track_id > tracks.id
+Ref: track_likes.user_id > users.id
+Ref: track_likes.track_id > tracks.id
+Ref: saved_albums.user_id > users.id
+Ref: saved_albums.album_id > albums.id
+Ref: saved_playlists.user_id > users.id
+Ref: saved_playlists.playlist_id > playlists.id
+Ref: listening_history.user_id > users.id
+Ref: listening_history.track_id > tracks.id
+Ref: share_links.track_id > tracks.id
+Ref: share_links.created_by > users.id
+Ref: comments.user_id > users.id
+Ref: comments.track_id > tracks.id
+Ref: comments.parent_id > comments.id
+Ref: reports.reporter_id > users.id
+Ref: reports.track_id > tracks.id
+Ref: reports.comment_id > comments.id
+Ref: reports.reported_user_id > users.id
+Ref: reports.handled_by > users.id
+Ref: audit_logs.admin_id > users.id

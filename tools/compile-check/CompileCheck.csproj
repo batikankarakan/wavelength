@@ -1,0 +1,52 @@
+<!--
+  Compile check for macOS/Linux: builds the C# code of Wavelength.Web against the .NET Framework 4.8 reference
+  assemblies with the .NET SDK, using the same NuGet packages (packages/) and C# 7.3. Razor views are turned into C#
+  by tools/razor-gen first, so views are checked too. Run: tools/check.sh
+  (Visual Studio users do not need this: just open Wavelength.sln and press F5.)
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <AssemblyName>Wavelength.Web</AssemblyName>
+    <RootNamespace>Wavelength.Web</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>CS1591</NoWarn>
+    <W>..\..\Wavelength.Web</W>
+    <P>..\..\packages</P>
+    <ViewsDir Condition="'$(ViewsDir)' == ''">views-main</ViewsDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <Compile Include="$(W)\**\*.cs" Exclude="$(W)\obj\**;$(W)\bin\**;$(W)\node_modules\**" />
+    <!-- C# generated from the Razor views by tools/razor-gen (see check.sh) -->
+    <Compile Include="$(ViewsDir)\*.cs" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Abstractions" />
+    <Reference Include="System.Web.Routing" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="EntityFramework"><HintPath>$(P)\EntityFramework.6.4.4\lib\net45\EntityFramework.dll</HintPath></Reference>
+    <Reference Include="EntityFramework.SqlServer"><HintPath>$(P)\EntityFramework.6.4.4\lib\net45\EntityFramework.SqlServer.dll</HintPath></Reference>
+    <Reference Include="Microsoft.AspNet.Identity.Core"><HintPath>$(P)\Microsoft.AspNet.Identity.Core.2.2.4\lib\net45\Microsoft.AspNet.Identity.Core.dll</HintPath></Reference>
+    <Reference Include="Microsoft.Owin"><HintPath>$(P)\Microsoft.Owin.4.2.2\lib\net45\Microsoft.Owin.dll</HintPath></Reference>
+    <Reference Include="Microsoft.Owin.Host.SystemWeb"><HintPath>$(P)\Microsoft.Owin.Host.SystemWeb.4.2.2\lib\net45\Microsoft.Owin.Host.SystemWeb.dll</HintPath></Reference>
+    <Reference Include="Microsoft.Owin.Security"><HintPath>$(P)\Microsoft.Owin.Security.4.2.2\lib\net45\Microsoft.Owin.Security.dll</HintPath></Reference>
+    <Reference Include="Microsoft.Owin.Security.Cookies"><HintPath>$(P)\Microsoft.Owin.Security.Cookies.4.2.2\lib\net45\Microsoft.Owin.Security.Cookies.dll</HintPath></Reference>
+    <Reference Include="Microsoft.Web.Infrastructure"><HintPath>$(P)\Microsoft.Web.Infrastructure.2.0.0\lib\net40\Microsoft.Web.Infrastructure.dll</HintPath></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(P)\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath></Reference>
+    <Reference Include="Owin"><HintPath>$(P)\Owin.1.0\lib\net40\Owin.dll</HintPath></Reference>
+    <Reference Include="System.Web.Helpers"><HintPath>$(P)\Microsoft.AspNet.WebPages.3.2.9\lib\net45\System.Web.Helpers.dll</HintPath></Reference>
+    <Reference Include="System.Web.Mvc"><HintPath>$(P)\Microsoft.AspNet.Mvc.5.2.9\lib\net45\System.Web.Mvc.dll</HintPath></Reference>
+    <Reference Include="System.Web.Razor"><HintPath>$(P)\Microsoft.AspNet.Razor.3.2.9\lib\net45\System.Web.Razor.dll</HintPath></Reference>
+    <Reference Include="System.Web.WebPages"><HintPath>$(P)\Microsoft.AspNet.WebPages.3.2.9\lib\net45\System.Web.WebPages.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

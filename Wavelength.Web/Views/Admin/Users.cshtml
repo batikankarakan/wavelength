@@ -1,0 +1,117 @@
+@model AdminUsersVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.Title = "User management";
+    var me = User.UserId();
+    var returnUrl = Request.RawUrl;
+    var roleFilter = new SelectList(AppRoles.All, Model.Role);
+    var statusFilter = new SelectList(new[] { new { V = "active", T = "Active" }, new { V = "banned", T = "Banned" } }, "V", "T", Model.Status);
+}
+@Html.Partial("_AdminNav", new AdminNavVm { Active = "users", Title = "Users.", Sub = "Search accounts, ban or unban, change roles and verify artists. Every change is written to the audit log." })
+
+<section class="section !pt-12">
+    @using (Html.BeginForm("Users", "Admin", FormMethod.Get, new { @class = "brut grid gap-4 bg-white p-5 md:grid-cols-[1fr_12rem_12rem_auto] md:items-end" }))
+    {
+        <div>
+            <label for="q" class="label">Search</label>
+            @Html.TextBox("q", Model.Q, new { id = "q", @class = "field", placeholder = "Name, username, email or stage name", type = "search" })
+        </div>
+        <div>
+            <label for="role" class="label">Role</label>
+            @Html.DropDownList("role", roleFilter, "All roles", new { id = "role", @class = "field" })
+        </div>
+        <div>
+            <label for="status" class="label">Status</label>
+            @Html.DropDownList("status", statusFilter, "Any", new { id = "status", @class = "field" })
+        </div>
+        <div class="flex gap-2">
+            <button class="btn-volt">Filter</button>
+            @if (!string.IsNullOrEmpty(Model.Q) || !string.IsNullOrEmpty(Model.Role) || !string.IsNullOrEmpty(Model.Status)) { <a href="/admin/users" class="btn-paper">Reset</a> }
+        </div>
+    }
+
+    <p class="mt-8 font-mono text-sm font-bold uppercase">@AdminUi.Plural(Model.Total, "account")</p>
+
+    @if (!Model.Users.Any())
+    {
+        <div class="mt-4">@Ui.EmptyState("No users match these filters.")</div>
+    }
+    else
+    {
+        <div class="brut mt-4 overflow-x-auto bg-white">
+            <table class="tbl min-w-[60rem]">
+                <thead><tr><th>User</th><th>Role</th><th>Artist</th><th>Status</th><th>Joined</th><th class="text-right">Actions</th></tr></thead>
+                <tbody>
+                    @foreach (var u in Model.Users)
+                    {
+                        var self = u.Id == me;
+                        <tr class="@(u.IsActive ? "" : "bg-flame/10")">
+                            <td>
+                                <div class="flex items-center gap-3">
+                                    @Html.Avatar(u.AvatarUrl, u.DisplayName, "h-11 w-11 text-xl")
+                                    <div class="min-w-0">
+                                        <a href="/users/@u.Username" class="display block truncate text-xl hover:underline">@u.DisplayName @(self ? "(you)" : "")</a>
+                                        <p class="truncate font-mono text-xs">@@@u.Username · @u.Email</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                @if (self)
+                                {
+                                    <span class="status bg-volt">@u.Role</span>
+                                }
+                                else
+                                {
+                                    using (Html.BeginForm("ChangeRole", "Admin", new { id = u.Id }, FormMethod.Post, new { @class = "flex items-center gap-2" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("returnUrl", returnUrl)
+                                        @* plain select: Html.DropDownList("role") would pick up the page's role filter from ViewData *@
+                                        <select name="role" id="role-@u.Id" class="field !w-36 !px-2 !py-1.5 !text-sm" aria-label="Role of @u.Username">
+                                            @foreach (var r in AppRoles.All) { <option value="@r" selected="@(u.Role == r)">@r</option> }
+                                        </select>
+                                        <button class="icon-btn !h-9 !w-9 !text-sm" title="Save role" aria-label="Save role">✓</button>
+                                    }
+                                }
+                            </td>
+                            <td>
+                                @if (u.ArtistId != null)
+                                {
+                                    <div class="flex items-center gap-2">
+                                        <a href="/artists/@u.ArtistId" class="font-mono text-sm underline">@u.StageName</a>
+                                        <span class="font-mono text-xs">· @u.Tracks tr.</span>
+                                    </div>
+                                    using (Html.BeginForm("ToggleVerify", "Admin", new { id = u.Id }, FormMethod.Post, new { @class = "mt-1" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("returnUrl", returnUrl)
+                                        <button class="status @(u.Verified ? "bg-mint" : "bg-paper") hover:bg-volt" title="Toggle verification">@(u.Verified ? "✓ verified" : "verify")</button>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="font-mono text-xs text-ink/40">—</span>
+                                }
+                            </td>
+                            <td><span class="status @(u.IsActive ? "bg-mint" : "bg-flame text-paper")">@(u.IsActive ? "active" : "banned")</span></td>
+                            <td class="whitespace-nowrap font-mono text-xs">@u.CreatedAt.ToString("d MMM yyyy")</td>
+                            <td class="text-right">
+                                @if (!self && u.Role != AppRoles.Admin)
+                                {
+                                    var confirmText = u.IsActive ? "Ban @" + u.Username + "? They will be logged out immediately." : "Unban @" + u.Username + "?";
+                                    using (Html.BeginForm("ToggleBan", "Admin", new { id = u.Id }, FormMethod.Post, new { data_confirm = confirmText }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("returnUrl", returnUrl)
+                                        <button class="@(u.IsActive ? "btn-flame" : "btn-mint") btn-sm">@(u.IsActive ? "Ban" : "Unban")</button>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    @Html.Partial("_Pager", Model.Pager)
+</section>

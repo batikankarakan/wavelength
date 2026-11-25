@@ -1,0 +1,7 @@
+@model PlaylistItem
+@using Wavelength.Web.Infrastructure
+<a href="/playlists/@Model.Id" class="brut wiggle group block bg-white p-3">
+    @Html.Cover(new CoverVm { Url = Model.CoverUrl, Color = Fmt.ColorFor(Model.Id + 2), Label = Model.Title })
+    <p class="display mt-3 truncate text-2xl">@Model.Title</p>
+    <p class="truncate font-mono text-xs uppercase">by @Model.Owner · @Model.TrackCount tracks @(Model.IsPublic ? "" : "· private")</p>
+</a>

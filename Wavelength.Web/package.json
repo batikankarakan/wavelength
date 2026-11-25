@@ -1,0 +1,10 @@
+{
+  "name": "wavelength-web",
+  "private": true,
+  "description": "Only needed to rebuild Content/site.css after changing Tailwind classes. The compiled CSS is committed.",
+  "scripts": {
+    "build:css": "tailwindcss -i Styles/site.css -o Content/site.css --minify",
+    "watch:css": "tailwindcss -i Styles/site.css -o Content/site.css --watch"
+  },
+  "devDependencies": { "tailwindcss": "3.4.17" }
+}

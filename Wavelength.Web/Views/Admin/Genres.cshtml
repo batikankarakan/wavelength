@@ -1,0 +1,86 @@
+@model GenresVm
+@using Wavelength.Web.Infrastructure
+@{ ViewBag.Title = "Genre management"; }
+@Html.Partial("_AdminNav", new AdminNavVm { Active = "genres", Title = "Genres.", Sub = "The genres artists can pick when they upload. A genre can only be deleted when no track uses it." })
+
+<section class="section !pt-12">
+    <div class="grid gap-8 lg:grid-cols-[22rem_1fr]">
+        @using (Html.BeginForm("CreateGenre", "Admin", FormMethod.Post, new { @class = "brut h-fit space-y-5 bg-volt p-6", data_reveal = "" }))
+        {
+            @Html.AntiForgeryToken()
+            <p class="eyebrow text-xs">/ New genre</p>
+            <h2 class="display text-4xl">Add a genre</h2>
+            <div>
+                @Html.BrutField(m => m.NewGenre.Name, "Name", placeholder: "e.g. Drum & Bass")
+                <p class="hint !text-ink/70">The URL slug is made from the name.</p>
+            </div>
+            <div>
+                @Html.LabelFor(m => m.NewGenre.Color, "Color", new { @class = "label" })
+                <div class="flex gap-3">
+                    @Html.TextBoxFor(m => m.NewGenre.Color, new { type = "color", @class = "h-12 w-16 cursor-pointer border-2 border-ink bg-white p-1" })
+                    <div class="flex flex-wrap gap-2">
+                        @foreach (var c in new[] { "#FFE500", "#2B3BFF", "#FF4A1C", "#8CF5C0", "#FF7AD9", "#C9A2FF" })
+                        {
+                            <button type="button" class="h-8 w-8 border-2 border-ink" style="background:@c" data-swatch="@c" aria-label="Use @c"></button>
+                        }
+                    </div>
+                </div>
+                @Html.ValidationMessageFor(m => m.NewGenre.Color, null, new { @class = "err block" })
+            </div>
+            <button class="btn-ink w-full">+ Create genre</button>
+        }
+
+        <div>
+            <p class="font-mono text-sm font-bold uppercase">@AdminUi.Plural(Model.Rows.Count, "genre")</p>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                @for (var i = 0; i < Model.Rows.Count; i++)
+                {
+                    var g = Model.Rows[i];
+                    <div class="brut flex flex-col bg-white" data-reveal="@(i % 6 * 50)">
+                        <div class="flex items-center justify-between gap-3 border-b-2 border-ink p-4" style="background:@g.Color;color:@Fmt.On(g.Color)">
+                            <a href="/genres/@g.Slug" class="display truncate text-3xl hover:underline">@g.Name</a>
+                            <span class="sticker bg-paper text-ink">@AdminUi.Plural(g.Tracks, "track")</span>
+                        </div>
+                        @using (Html.BeginForm("UpdateGenre", "Admin", new { id = g.Id }, FormMethod.Post, new { @class = "flex flex-1 flex-wrap items-end gap-2 p-4" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <div class="flex-1">
+                                <label for="name-@g.Id" class="label !text-xs">Name · /genres/@g.Slug</label>
+                                @* Same rules as GenreForm (2-40 characters) for jQuery unobtrusive validation *@
+                                @Html.TextBox("Name", g.Name, new
+                                {
+                                    id = "name-" + g.Id, @class = "field !py-2", maxlength = "40",
+                                    data_val = "true", data_val_required = "Give the genre a name.",
+                                    data_val_length = "Genre names need 2 to 40 characters.", data_val_length_min = "2", data_val_length_max = "40",
+                                })
+                            </div>
+                            @Html.TextBox("Color", g.Color, new { id = "color-" + g.Id, type = "color", @class = "h-[46px] w-12 cursor-pointer border-2 border-ink bg-white p-1", aria_label = "Color of " + g.Name })
+                            <button class="icon-btn !h-[46px]" title="Save" aria-label="Save @g.Name">✓</button>
+                            @Html.ValidationMessage("Name", null, new { @class = "err block w-full" })
+                        }
+                        @using (Html.BeginForm("DeleteGenre", "Admin", new { id = g.Id }, FormMethod.Post, new { @class = "border-t-2 border-ink px-4 py-2", data_confirm = "Delete the genre " + g.Name + "?" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            if (g.Tracks > 0)
+                            {
+                                <p class="font-mono text-xs text-ink/60">In use by @AdminUi.Plural(g.Tracks, "track") · can't delete</p>
+                            }
+                            else
+                            {
+                                <button class="font-mono text-xs font-bold uppercase text-flame hover:underline">Delete genre</button>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</section>
+@section Scripts {
+<script>
+    // jQuery: swatch buttons fill the color picker of the new-genre form
+    $(function () {
+        $('[data-swatch]').on('click', function () { $('#NewGenre_Color').val($(this).data('swatch')); });
+    });
+</script>
+}

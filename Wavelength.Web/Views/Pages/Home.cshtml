@@ -1,0 +1,218 @@
+@model HomeVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.Title = "";
+    var top = Model.Trending.FirstOrDefault();
+    var allIds = string.Join(",", Model.Trending.Select(t => t.Id));
+    var features = new[]
+    {
+        Tuple.Create("Share in one tap", "Upload a track, get a link, drop it anywhere. Your music travels at the speed of your friends."),
+        Tuple.Create("Save everything", "Build libraries, playlists and moods. Every song you love stays one tap away, forever."),
+        Tuple.Create("Listen without limits", "Studio-grade streaming, zero ads in your way, and a player that feels as good as it sounds."),
+    };
+    var steps = new[]
+    {
+        Tuple.Create("01", "Create your profile", "Sign up in seconds and tune your taste."),
+        Tuple.Create("02", "Upload or discover", "Share your own sound or dive into others."),
+        Tuple.Create("03", "Save and replay", "Collect favourites into playlists you own."),
+    };
+    var signedIn = Request.IsAuthenticated;
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    var featureBg = new[] { "bg-volt", "bg-white", "bg-cobalt text-paper" };
+    var trendingProps = new
+    {
+        tracks = Model.Trending.Select(t => new { t.Id, t.Title, t.Artist, t.ArtistId, t.Genre, t.DurationSec, plays = Fmt.Count(t.Plays), t.Color, onColor = Fmt.On(t.Color), t.CoverUrl, t.Liked }),
+        genres = Model.Genres,
+    };
+}
+<!-- HERO -->
+<section class="relative overflow-hidden border-b-2 border-ink pt-24">
+  <div class="halftone absolute -right-20 top-20 hidden h-[28rem] w-[28rem] opacity-20 lg:block"></div>
+  <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-8 lg:grid-cols-[1.25fr_1fr]">
+    <div>
+      <div class="mb-8 flex flex-wrap gap-3">
+        <span class="sticker bg-flame text-paper">● Live · @Fmt.Count(Model.Listeners) listening</span>
+        <span class="sticker bg-volt">Free forever*</span>
+      </div>
+      <h1 data-hop class="display text-[clamp(4.5rem,13vw,11.5rem)]">
+        <span class="block">Share.</span>
+        <span class="block"><span class="inline-block -rotate-2 border-2 border-ink bg-volt px-4 shadow-brut">Save.</span></span>
+        <span class="block">Play<span class="text-cobalt">.</span></span>
+      </h1>
+      <p class="mt-8 max-w-lg text-xl font-medium">Post the track you can't stop playing. Keep the ones that hit. Listen to strangers who somehow get you.</p>
+      <div class="mt-10 flex flex-wrap gap-4">
+        <a href="#player" class="btn-volt">▶ Start listening</a>
+        <a href="/about" class="btn-paper">Meet the crew</a>
+      </div>
+      <p class="mt-6 font-mono text-xs text-ink/60">*it's a uni project. everything is free. you're welcome.</p>
+    </div>
+
+    @if (top != null)
+    {
+    <!-- hero record card -->
+    <div data-tilt="6" class="relative mx-auto w-full max-w-md">
+      <span class="sticker absolute -left-5 -top-5 z-10 bg-paper text-sm">Now trending</span>
+      <div class="brut p-5" style="background:@top.Color">
+        <div class="relative flex aspect-square items-center justify-center overflow-hidden border-2 border-ink bg-paper/20">
+          <div class="halftone absolute inset-0 opacity-20"></div>
+          <div class="record spin-slow relative flex h-[82%] w-[82%] items-center justify-center rounded-full border-2 border-ink">
+            <div class="flex h-[34%] w-[34%] items-center justify-center overflow-hidden rounded-full border-2 border-ink bg-paper">
+              @if (top.CoverUrl != null) { <img src="@top.CoverUrl" alt="" class="h-full w-full object-cover"> }
+              else { <span class="h-3 w-3 rounded-full bg-ink"></span> }
+            </div>
+          </div>
+        </div>
+        <div class="mt-5 flex items-center justify-between gap-3 border-2 border-ink bg-paper p-4">
+          <div class="min-w-0">
+            <a href="/tracks/@top.Id" class="display block truncate text-3xl hover:underline">@top.Title</a>
+            <a href="/artists/@top.ArtistId" class="block truncate font-mono text-sm hover:underline">@top.Artist</a>
+          </div>
+          <button type="button" data-play-all="@allIds" class="flex h-14 w-14 shrink-0 items-center justify-center border-2 border-ink bg-volt text-xl shadow-brut-sm transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none" aria-label="Play trending">▶</button>
+        </div>
+        <div class="mt-4 h-10"><div class="flex h-full items-end gap-1.5">@for (var n = 1; n <= 26; n++) { <i class="bar" style="animation-delay:@((-((n * 137) % 100) / 80.0).ToString(inv))s;animation-duration:@((0.8 + ((n * 53) % 70) / 100.0).ToString(inv))s"></i> }</div></div>
+      </div>
+      <span class="sticker absolute -bottom-4 -right-3 z-10 bg-mint">♥ @Fmt.Count(Model.SavesToday) saves this week</span>
+    </div>
+    }
+  </div>
+</section>
+
+<!-- CROSSING MARQUEES -->
+<div class="relative overflow-hidden border-b-2 border-ink py-16">
+  <div class="-rotate-2 border-y-2 border-ink bg-ink py-3 text-volt">
+    <div class="marquee flex w-max gap-8 whitespace-nowrap font-display text-4xl uppercase">
+      @for (var n = 0; n < 2; n++) { foreach (var g in new[] { "Electronic", "Hip-Hop", "Indie", "Lo-fi", "Rock", "Jazz", "Ambient", "Synthwave", "Pop", "House" }) { <a href="/genres/@Fmt.Slug(g)" class="hover:text-paper">@g ✱</a> } }
+    </div>
+  </div>
+  <div class="mt-3 rotate-1 border-y-2 border-ink bg-volt py-3">
+    <div class="marquee-rev flex w-max gap-8 whitespace-nowrap font-display text-4xl uppercase">
+      @for (var n = 0; n < 2; n++) { foreach (var g in new[] { "Share it", "Save it", "Play it", "Loop it", "Send it", "Drop it", "Feel it" }) { <span>@g ★</span> } }
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="section">
+  <div data-reveal class="max-w-3xl">
+    <span class="eyebrow">/ Why bother</span>
+    <h2 data-hop class="display mt-3 text-6xl md:text-8xl">Music, minus the <span class="hop-ink mt-2 inline-block bg-flame px-3 text-paper">nonsense.</span></h2>
+  </div>
+  <div class="mt-14 grid gap-8 md:grid-cols-3">
+    @for (var i = 0; i < features.Length; i++)
+    {
+      <article data-reveal="@(i * 100)" data-tilt="6" class="brut wiggle flex flex-col p-8 @featureBg[i]">
+        <p class="display text-8xl">0@(i + 1)</p>
+        <h3 class="display mt-6 text-4xl">@features[i].Item1</h3>
+        <p class="mt-3 text-lg font-medium">@features[i].Item2</p>
+      </article>
+    }
+  </div>
+</section>
+
+<!-- TRACKS (Vue island: genre filter + search over the trending list, real player) -->
+<section id="player" class="border-y-2 border-ink bg-mint">
+  <div class="section" data-vue="trending" data-props="@Fmt.Json(trendingProps)" v-cloak>
+    <div class="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+      <div>
+        <span class="eyebrow">/ Trending</span>
+        <h2 data-hop class="display mt-3 text-6xl md:text-8xl">Press play.<br>Go on.</h2>
+      </div>
+      <input v-model="query" type="search" placeholder="SEARCH TRACKS / ARTISTS" class="field md:max-w-xs" aria-label="Search tracks">
+    </div>
+
+    <div class="mt-8 flex flex-wrap gap-3">
+      <button v-for="g in genres" :key="g" v-on:click="genre = g" class="border-2 border-ink px-4 py-2 font-mono text-sm font-bold uppercase transition hover:-translate-y-0.5"
+              :class="genre === g ? 'bg-ink text-paper shadow-brut-sm' : 'bg-paper'">{{ g }}</button>
+    </div>
+
+    <div class="brut mt-8 bg-paper" data-tracklist>
+      <div v-for="(t, i) in filtered" :key="t.id" :data-track-row="t.id"
+           class="group flex w-full items-center gap-4 border-b-2 border-ink p-4 text-left transition last:border-b-0 hover:translate-x-2 hover:bg-volt">
+        <span class="display hidden w-12 text-4xl text-ink/30 group-hover:text-ink sm:block">{{ String(i + 1).padStart(2, '0') }}</span>
+        <button type="button" :data-play="t.id" class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden border-2 border-ink text-2xl transition group-hover:scale-110" :style="{ background: t.color, color: t.onColor }" :aria-label="'Play ' + t.title">
+          <img v-if="t.coverUrl" :src="t.coverUrl" alt="" class="absolute inset-0 h-full w-full object-cover opacity-90">
+          <span class="relative flex h-8 w-8 items-center justify-center border-2 border-ink bg-paper text-sm text-ink" data-play-icon>▶</span>
+        </button>
+        <span class="min-w-0 flex-1">
+          <a :href="'/tracks/' + t.id" class="display block truncate text-2xl hover:underline md:text-3xl">{{ t.title }}</a>
+          <a :href="'/artists/' + t.artistId" class="block truncate font-mono text-sm hover:underline">{{ t.artist }}</a>
+        </span>
+        <span v-if="t.genre" class="sticker hidden bg-paper sm:block">{{ t.genre }}</span>
+        <span class="hidden w-20 text-right font-mono text-sm md:block">{{ t.plays }}</span>
+        <button type="button" :data-like="t.id" :aria-pressed="t.liked ? 'true' : 'false'" class="flex h-9 w-9 shrink-0 items-center justify-center border-2 border-ink font-mono text-lg transition hover:scale-110" :class="t.liked ? 'bg-flame text-paper' : 'bg-paper'" :aria-label="'Like ' + t.title">♥</button>
+        <span class="w-12 text-right font-mono text-sm font-bold">{{ fmt(t.durationSec) }}</span>
+      </div>
+      <p v-if="!filtered.length" class="p-10 text-center font-mono">No tracks found. Try another search.</p>
+    </div>
+    <div class="mt-8 flex flex-wrap gap-4">
+      <a href="/charts" class="btn-ink">See the weekly charts →</a>
+      <a href="/explore" class="btn-paper">Explore everything</a>
+    </div>
+  </div>
+</section>
+
+<!-- STEPS -->
+<section class="section">
+  <h2 data-hop data-reveal class="display text-6xl md:text-8xl">How it works<span class="text-flame">?</span><br><span class="text-cobalt">Dead simple.</span></h2>
+  <div class="mt-14 grid gap-0 border-2 border-ink bg-white md:grid-cols-3">
+    @for (var i = 0; i < steps.Length; i++)
+    {
+      <div data-reveal="@(i * 120)" class="border-b-2 border-ink p-8 last:border-b-0 md:border-b-0 md:border-r-2 md:last:border-r-0">
+        <p class="display text-[9rem] leading-none text-cobalt">@steps[i].Item1</p>
+        <h3 class="display mt-2 text-3xl">@steps[i].Item2</h3>
+        <p class="mt-2 font-mono text-sm">@steps[i].Item3</p>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- STATS (live numbers from the database) -->
+<section class="border-y-2 border-ink bg-ink text-paper">
+  <div class="mx-auto grid max-w-7xl gap-10 px-6 py-20 text-center sm:grid-cols-2 lg:grid-cols-4">
+    <div data-reveal><p class="display text-8xl text-volt md:text-9xl" data-count="@Model.Listeners">@Model.Listeners</p><p class="mt-3 font-mono text-sm uppercase tracking-widest">Active listeners</p></div>
+    <div data-reveal="80"><p class="display text-8xl text-volt md:text-9xl" data-count="@Model.Tracks">@Model.Tracks</p><p class="mt-3 font-mono text-sm uppercase tracking-widest">Tracks shared</p></div>
+    <div data-reveal="160">
+      @if (Model.Plays >= 10000) { <p class="display text-8xl text-volt md:text-9xl" data-count="@(Model.Plays / 1000)" data-suffix="K">@Fmt.Count(Model.Plays)</p> }
+      else { <p class="display text-8xl text-volt md:text-9xl" data-count="@Model.Plays">@Model.Plays</p> }
+      <p class="mt-3 font-mono text-sm uppercase tracking-widest">Total plays</p>
+    </div>
+    <div data-reveal="240"><p class="display text-8xl text-volt md:text-9xl" data-count="@Model.Countries">@Model.Countries</p><p class="mt-3 font-mono text-sm uppercase tracking-widest">Countries</p></div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section">
+  <div data-reveal class="relative overflow-hidden border-2 border-ink bg-cobalt p-10 text-paper shadow-brut-lg md:p-20">
+    <div class="halftone-light absolute inset-0"></div>
+    <span class="sticker absolute right-6 top-6 bg-volt text-ink">Limited · it's free</span>
+    <div class="relative">
+      <h2 data-hop class="display max-w-4xl text-6xl md:text-9xl">Find your <span class="mt-3 inline-block bg-volt px-3 text-ink">wavelength.</span></h2>
+      @if (signedIn)
+      {
+        <p class="mt-6 max-w-xl text-xl font-medium">Your library is waiting. Pick up where you left off.</p>
+        <a href="/library" class="btn-volt mt-10">Open my library →</a>
+      }
+      else
+      {
+        <p class="mt-6 max-w-xl text-xl font-medium">Make a free account. Like tracks, build playlists, follow artists, or upload your own sound.</p>
+        <a href="/register" class="btn-volt mt-10">Create a free account →</a>
+      }
+    </div>
+  </div>
+</section>
+
+@section Scripts {
+<script>
+  WL.island('trending', {
+    props: ['tracks', 'genres'],
+    data() { return { genre: 'All', query: '' }; },
+    computed: {
+      filtered() {
+        const q = this.query.trim().toLowerCase();
+        return this.tracks.filter(t => (this.genre === 'All' || t.genre === this.genre) && (t.title + t.artist).toLowerCase().includes(q));
+      },
+    },
+    methods: { fmt: WL.fmt },
+  });
+</script>
+}

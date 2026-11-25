@@ -1,0 +1,42 @@
+@model AdminNavVm
+@{
+    var isAdmin = User.IsAdmin();
+    var pending = (int?)ViewBag.PendingCount ?? 0;
+    var open = (int?)ViewBag.OpenReportCount ?? 0;
+    var unread = (int?)ViewBag.NewMessageCount ?? 0;
+    var tabs = new List<Tuple<string, string, string, int>>
+    {
+        Tuple.Create("dashboard", "Dashboard", "/admin", 0),
+        Tuple.Create("review", "Review queue", "/admin/review", pending),
+        Tuple.Create("reports", "Reports", "/admin/reports", open),
+    };
+    if (isAdmin)
+    {
+        tabs.Add(Tuple.Create("users", "Users", "/admin/users", 0));
+        tabs.Add(Tuple.Create("genres", "Genres", "/admin/genres", 0));
+        tabs.Add(Tuple.Create("messages", "Inbox", "/admin/messages", unread));
+        tabs.Add(Tuple.Create("audit", "Audit log", "/admin/audit", 0));
+    }
+}
+<section class="relative overflow-hidden border-b-2 border-ink bg-ink text-paper page-top">
+    <div class="halftone-light absolute inset-0 opacity-40"></div>
+    <div class="relative mx-auto max-w-7xl px-6">
+        <div class="flex flex-wrap items-center gap-3">
+            <span class="sticker bg-flame text-paper">● @(isAdmin ? "Admin" : "Moderator") console</span>
+            <span class="sticker bg-volt text-ink">Signed in as @User.Identity.Name</span>
+        </div>
+        <h1 data-hop class="display mt-6 text-[clamp(3.5rem,9vw,7.5rem)]">@Model.Title</h1>
+        <p class="mt-3 max-w-2xl font-mono text-sm text-paper/70">@Model.Sub</p>
+        <nav class="mt-10 flex flex-wrap gap-2 pb-0" aria-label="Admin sections">
+            @foreach (var t in tabs)
+            {
+                var on = Model.Active == t.Item1;
+                <a href="@t.Item3" class="-mb-[2px] flex items-center gap-2 border-2 border-b-0 px-4 py-2.5 font-mono text-sm font-bold uppercase transition @(on ? "border-ink bg-paper text-ink" : "border-paper/30 hover:border-paper hover:bg-volt hover:text-ink")"
+                   aria-current="@(on ? "page" : null)">
+                    @t.Item2
+                    @if (t.Item4 > 0) { <span class="border-2 border-ink bg-flame px-1.5 text-[11px] leading-4 text-paper">@t.Item4</span> }
+                </a>
+            }
+        </nav>
+    </div>
+</section>

@@ -1,0 +1,24 @@
+@model BarsVm
+@{
+    var max = Math.Max(1, Model.Points.Count == 0 ? 1 : Model.Points.Max(p => p.Value));
+}
+<div class="flex items-end gap-1 border-b-2 border-ink" style="height:@(Model.Height)px">
+    @for (var i = 0; i < Model.Points.Count; i++)
+    {
+        var p = Model.Points[i];
+        var h = p.Value == 0 ? 2 : Math.Max(4, (int)Math.Round(p.Value * 100.0 / max));
+        <div class="group relative flex h-full flex-1 items-end" title="@(p.Sub ?? p.Label): @p.Value">
+            <div class="bar-grow w-full border-2 border-b-0 border-ink transition group-hover:bg-ink" style="height:@(h)%;background:@(p.Color ?? Model.Color);animation-delay:@(i * 18)ms"></div>
+            <span class="pointer-events-none absolute -top-7 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap border-2 border-ink bg-volt px-1.5 font-mono text-[11px] font-bold group-hover:block">@p.Value</span>
+        </div>
+    }
+</div>
+@if (Model.ShowLabels)
+{
+    <div class="mt-2 flex gap-1">
+        @foreach (var p in Model.Points)
+        {
+            <span class="flex-1 truncate text-center font-mono text-[10px] uppercase">@p.Label</span>
+        }
+    </div>
+}

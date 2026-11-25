@@ -1,0 +1,10 @@
+@model TrackItem
+@using Wavelength.Web.Infrastructure
+<article class="brut wiggle group flex flex-col bg-white p-3" data-tracklist>
+    <div class="relative">
+        @Html.Cover(new CoverVm { Url = Model.CoverUrl, Color = Model.Color, Label = Model.Title })
+        <button type="button" data-play="@Model.Id" class="absolute bottom-3 right-3 flex h-12 w-12 items-center justify-center border-2 border-ink bg-volt text-xl shadow-brut-sm transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none" aria-label="Play @Model.Title"><span data-play-icon>▶</span></button>
+    </div>
+    <a href="/tracks/@Model.Id" class="display mt-3 block truncate text-2xl hover:underline">@Model.Title</a>
+    <a href="/artists/@Model.ArtistId" class="block truncate font-mono text-xs hover:underline">@Model.Artist@(Model.Verified ? " ✓" : "")</a>
+</article>

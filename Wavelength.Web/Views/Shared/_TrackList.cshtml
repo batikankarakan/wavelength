@@ -1,0 +1,38 @@
+@model TrackListVm
+@using Wavelength.Web.Infrastructure
+@* Track rows in the landing page style. Play buttons queue every track in this list. *@
+@if (!Model.Tracks.Any())
+{
+    @Ui.EmptyState(Model.Empty)
+}
+else
+{
+<div class="brut bg-paper" data-tracklist>
+    @for (var i = 0; i < Model.Tracks.Count; i++)
+    {
+        var t = Model.Tracks[i];
+        <div class="group flex w-full items-center gap-3 border-b-2 border-ink p-3 transition last:border-b-0 hover:bg-volt md:gap-4 md:p-4" data-track-row="@t.Id">
+            @if (Model.Numbered)
+            {
+                <span class="display hidden w-12 text-4xl text-ink/30 group-hover:text-ink sm:block">@((i + 1).ToString("00"))</span>
+            }
+            <button type="button" data-play="@t.Id" class="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden border-2 border-ink text-2xl transition group-hover:scale-105 md:h-16 md:w-16" style="background:@t.Color;color:@Fmt.On(t.Color)" aria-label="Play @t.Title">
+                @if (!string.IsNullOrEmpty(t.CoverUrl)) { <img src="@t.CoverUrl" alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover opacity-90"> }
+                <span class="relative flex h-8 w-8 items-center justify-center border-2 border-ink bg-paper text-sm text-ink" data-play-icon>▶</span>
+            </button>
+            <span class="min-w-0 flex-1">
+                <a href="/tracks/@t.Id" class="display block truncate text-2xl hover:underline md:text-3xl">@t.Title</a>
+                <a href="/artists/@t.ArtistId" class="block truncate font-mono text-sm hover:underline">@t.Artist@(t.Verified ? " ✓" : "")@if (Model.ShowAlbum && t.AlbumTitle != null) {<span class="text-ink/60"> · @t.AlbumTitle</span>}</a>
+            </span>
+            @if (t.Genre != null)
+            {
+                <span class="sticker hidden bg-paper lg:block">@t.Genre</span>
+            }
+            <span class="hidden w-16 text-right font-mono text-sm md:block" title="@t.Plays plays">@Fmt.Count(t.Plays)</span>
+            <button type="button" data-like="@t.Id" aria-pressed="@(t.Liked ? "true" : "false")" class="like-btn flex h-9 w-9 shrink-0 items-center justify-center border-2 border-ink font-mono text-lg transition hover:scale-110 @(t.Liked ? "bg-flame text-paper" : "bg-paper")" aria-label="Like @t.Title">♥</button>
+            <span class="w-11 text-right font-mono text-sm font-bold">@Fmt.Duration(t.DurationSec)</span>
+            @if (Model.Extra != null) { @Model.Extra(t) }
+        </div>
+    }
+</div>
+}

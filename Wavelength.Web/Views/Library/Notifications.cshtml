@@ -1,0 +1,91 @@
+@model NotificationsVm
+@{
+    ViewBag.Title = "Notifications";
+    ViewBag.Nav = "library";
+    Func<string, string> icon = type =>
+    {
+        switch (type)
+        {
+            case "follow": return "+";
+            case "track_approved": case "track_restored": return "✓";
+            case "track_rejected": case "track_hidden": return "!";
+            case "track_pending": return "⧗";
+            case "comment": case "reply": return "“";
+            case "artist_verified": return "★";
+            default: return "♪";
+        }
+    };
+    Func<string, string> color = type =>
+    {
+        switch (type)
+        {
+            case "follow": return "bg-cobalt text-paper";
+            case "track_approved": case "track_restored": case "artist_verified": return "bg-mint";
+            case "track_rejected": case "track_hidden": return "bg-flame text-paper";
+            case "comment": case "reply": return "bg-volt";
+            default: return "bg-paper";
+        }
+    };
+    var here = Model.UnreadOnly ? "/notifications?filter=unread" : "/notifications";
+}
+@Html.Partial("~/Views/Library/_LibraryHero.cshtml", new LibraryHeroVm { Active = "notifications", Sticker = "Inbox", StickerColor = "bg-volt", Title = "What’s", Highlight = "new.", Text = "" })
+
+<section class="section !pt-12">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-wrap gap-3">
+      <a href="/notifications" class="chip @(!Model.UnreadOnly ? "chip-on" : "chip-off")">All</a>
+      <a href="/notifications?filter=unread" class="chip @(Model.UnreadOnly ? "chip-on" : "chip-off")">Unread <span class="ml-2 opacity-70">@Model.Unread</span></a>
+    </div>
+    @if (Model.Unread > 0)
+    {
+      using (Html.BeginForm("ReadAll", "Library", FormMethod.Post))
+      {
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn-paper btn-sm">✓ Mark all as read</button>
+      }
+    }
+  </div>
+
+  <div class="mt-8">
+    @if (!Model.Items.Any())
+    {
+      @Ui.EmptyState(Model.UnreadOnly ? "You are all caught up." : "No notifications yet.")
+    }
+    else
+    {
+      <ul class="brut bg-white">
+        @foreach (var n in Model.Items)
+        {
+          <li class="flex items-center gap-4 border-b-2 border-ink p-4 last:border-b-0 @(n.IsRead ? "" : "bg-volt/30")">
+            <span class="display flex h-12 w-12 shrink-0 items-center justify-center border-2 border-ink text-2xl @color(n.Type)" aria-hidden="true">@icon(n.Type)</span>
+            <div class="min-w-0 flex-1">
+              @if (n.Link != null)
+              {
+                using (Html.BeginForm("Open", "Library", new { id = n.Id }, FormMethod.Post))
+                {
+                  @Html.AntiForgeryToken()
+                  <button type="submit" class="text-left font-medium hover:underline @(n.IsRead ? "" : "font-bold")">@n.Text</button>
+                }
+              }
+              else
+              {
+                <p class="font-medium @(n.IsRead ? "" : "font-bold")">@n.Text</p>
+              }
+              <p class="mt-1 font-mono text-xs uppercase text-ink/60">@Fmt.Ago(n.CreatedAt)@(n.IsRead ? "" : " · new")</p>
+            </div>
+            @if (!n.IsRead)
+            {
+              using (Html.BeginForm("MarkRead", "Library", new { id = n.Id }, FormMethod.Post))
+              {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@here">
+                <button type="submit" class="chip chip-off !px-3 !text-xs" title="Mark as read">✓ Read</button>
+              }
+            }
+          </li>
+        }
+      </ul>
+    }
+  </div>
+  @Html.Partial("_Pager", new PagerVm { Page = Model.Page, TotalPages = Model.TotalPages, Url = p => here + (here.Contains("?") ? "&" : "?") + "page=" + p })
+</section>

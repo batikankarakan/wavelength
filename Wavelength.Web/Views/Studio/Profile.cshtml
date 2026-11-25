@@ -1,0 +1,87 @@
+@model StudioProfileVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.StudioTitle = "Profile.";
+    ViewBag.StudioAccent = "bg-mint";
+    ViewBag.StudioLead = "This is how fans see you on your artist page. Your avatar and bio live in your account settings.";
+    var f = Model.Form;
+}
+@Html.Partial("_StudioNav", Model.Header)
+
+<section class="section !pt-14">
+    <div class="grid gap-10 lg:grid-cols-[1.4fr_1fr]">
+        @using (Html.BeginForm("Profile", "Studio", FormMethod.Post, new { enctype = "multipart/form-data", @class = "brut space-y-7 bg-white p-6 md:p-10", data_reveal = "" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true, "", new { @class = "font-mono text-sm font-bold text-flame" })
+            <div>
+                @Html.LabelFor(m => m.Form.StageName, "Stage name", new { @class = "label" })
+                @Html.TextBoxFor(m => m.Form.StageName, new { @class = "field text-lg", maxlength = "80" })
+                @Html.ValidationMessageFor(m => m.Form.StageName, null, new { @class = "err block" })
+            </div>
+            <div class="grid gap-6 md:grid-cols-2">
+                @Html.BrutField(m => m.Form.Country, "Country", placeholder: "Türkiye", autocomplete: "country-name")
+                @Html.BrutField(m => m.Form.Website, "Website", "url", "https://", "url")
+            </div>
+            <div data-vue="banner-picker" data-props="@Fmt.Json(new { url = Model.BannerUrl })">
+                <p class="label">Banner</p>
+                <label for="Form_Banner" class="relative flex h-40 cursor-pointer items-center justify-center overflow-hidden border-2 border-ink bg-volt shadow-brut-sm">
+                    <span class="halftone absolute inset-0 opacity-20"></span>
+                    <img v-if="preview && !remove" :src="preview" alt="" class="absolute inset-0 h-full w-full object-cover">
+                    <span class="btn-paper btn-sm relative">{{ preview && !remove ? 'Change banner' : 'Upload banner' }}</span>
+                </label>
+                <input id="Form_Banner" name="Form.Banner" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*" class="sr-only" v-on:change="pick">
+                <label v-if="url && !picked" class="mt-3 flex items-center gap-2 font-mono text-xs"><input type="checkbox" name="Form.RemoveBanner" value="true" class="tick" v-model="remove"> Remove banner</label>
+                <p class="hint">Wide images work best (3:1). JPG, PNG, WEBP or GIF · up to 4 MB.</p>
+            </div>
+            @Html.ValidationMessage("Form.Banner", null, new { @class = "err block" })
+            <button type="submit" class="btn-volt w-full">Save profile →</button>
+        }
+
+        <aside class="space-y-8">
+            <div data-reveal="80" data-tilt="5" class="brut overflow-hidden bg-paper">
+                <div class="relative h-28 border-b-2 border-ink bg-cobalt">
+                    @if (!string.IsNullOrEmpty(Model.BannerUrl)) { <img src="@Model.BannerUrl" alt="" class="h-full w-full object-cover"> }
+                    else { <span class="halftone-light absolute inset-0"></span> }
+                </div>
+                <div class="-mt-10 px-6 pb-6">
+                    @Html.Avatar(Model.AvatarUrl, f.StageName, "h-20 w-20 text-4xl relative bg-paper")
+                    <p class="display mt-3 text-4xl">@Model.Header.StageName@(Model.Header.Verified ? " ✓" : "")</p>
+                    <p class="font-mono text-xs uppercase">@(Model.Form.Country ?? "Somewhere on earth") · @Fmt.Count(Model.Followers) followers</p>
+                    <a href="/artists/@Model.Header.ArtistId" class="btn-paper btn-sm mt-5 w-full">View public page ↗</a>
+                </div>
+            </div>
+            <div data-reveal="120" class="brut @(Model.Header.Verified ? "bg-mint" : "bg-ink text-paper") p-6">
+                <p class="eyebrow @(Model.Header.Verified ? "" : "text-volt")">Verification</p>
+                @if (Model.Header.Verified)
+                {
+                    <p class="display mt-2 text-4xl">✓ Verified</p>
+                    <p class="mt-2 font-mono text-sm">Fans see a check mark next to your name.</p>
+                }
+                else
+                {
+                    <p class="display mt-2 text-4xl">Not yet.</p>
+                    <p class="mt-2 font-mono text-sm text-paper/80">Admins verify artists with a real catalog. Keep uploading; verification is done by the Wavelength team.</p>
+                }
+            </div>
+            <a href="/settings" class="block font-mono text-sm font-bold underline decoration-2 hover:bg-volt" data-reveal="160">Change avatar, bio or password in account settings →</a>
+        </aside>
+    </div>
+</section>
+
+@section Scripts {
+<script>
+    WL.island('banner-picker', {
+        props: ['url'],
+        data() { return { preview: this.$props.url, picked: false, remove: false }; },
+        methods: {
+            pick(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                this.picked = true; this.remove = false;
+                this.preview = URL.createObjectURL(file);
+            },
+        },
+    });
+</script>
+}

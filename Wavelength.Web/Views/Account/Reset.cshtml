@@ -1,0 +1,29 @@
+@model Wavelength.Web.Controllers.ResetForm
+@using Wavelength.Web.Infrastructure
+@{ ViewBag.Title = "Set a new password"; ViewBag.HideFooter = true; var invalid = ViewBag.Invalid == true; }
+<section class="grid min-h-screen border-b-2 border-ink pt-[66px] lg:grid-cols-2">
+    @Html.Partial("_AuthAside", new AuthAsideVm { Sticker = "Almost there", Line1 = "Fresh", Highlight = "new", Line3 = "start.", Text = "Pick a new password with at least 8 characters.", Color = "bg-volt text-ink" })
+    <div class="flex items-center justify-center px-6 py-16">
+        <div class="w-full max-w-md">
+            @Html.Sticker("New password", "bg-mint")
+            @if (invalid)
+            {
+                <h1 data-hop class="display mt-6 text-7xl">Link expired.</h1>
+                <p class="mt-4 font-mono text-sm">This reset link is invalid or older than one hour.</p>
+                @Html.ActionLink("Request a new link →", "Forgot", "Account", null, new { @class = "btn-volt mt-8" })
+            }
+            else
+            {
+                <h1 data-hop class="display mt-6 text-7xl">New password.</h1>
+                using (Html.BeginForm("Reset", "Account", FormMethod.Post, new { @class = "brut mt-8 space-y-5 bg-white p-6 md:p-8" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.HiddenFor(m => m.Token)
+                    @Html.BrutField(m => m.Password, "New password", "password", null, "new-password")
+                    @Html.BrutField(m => m.ConfirmPassword, "Repeat", "password", null, "new-password")
+                    <button type="submit" class="btn-volt w-full">Save password →</button>
+                }
+            }
+        </div>
+    </div>
+</section>

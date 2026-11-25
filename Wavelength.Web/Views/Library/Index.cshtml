@@ -1,0 +1,77 @@
+@model LibraryVm
+@{
+    ViewBag.Title = "My library";
+    ViewBag.Nav = "library";
+    var tabs = new[] { Tuple.Create("liked", "Liked songs", Model.LikedCount), Tuple.Create("albums", "Albums", Model.AlbumCount), Tuple.Create("playlists", "Saved playlists", Model.PlaylistCount) };
+    var here = "/library?tab=" + Model.Tab;
+}
+@Html.Partial("~/Views/Library/_LibraryHero.cshtml", new LibraryHeroVm { Active = "library", Sticker = "Your library", StickerColor = "bg-mint", Title = "Your", Highlight = "stash.", Text = "Everything you liked and saved, one tap away." })
+
+<section class="section !pt-12">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-wrap gap-3">
+      @foreach (var t in tabs)
+      {
+        <a href="/library?tab=@t.Item1" class="chip @(Model.Tab == t.Item1 ? "chip-on" : "chip-off")">@t.Item2 <span class="ml-2 opacity-70">@t.Item3</span></a>
+      }
+    </div>
+    @if (Model.Tab == "liked" && Model.Liked.Any())
+    {
+      <button type="button" class="btn-volt" data-play-all="@string.Join(",", Model.Liked.Select(t => t.Id))">▶ Play all</button>
+    }
+  </div>
+
+  <div class="mt-8" data-reveal>
+    @if (Model.Tab == "liked")
+    {
+      @Html.Partial("_TrackList", new TrackListVm { Tracks = Model.Liked, ShowAlbum = true, Empty = "No liked songs yet. Tap ♥ on any track to keep it here." })
+      if (!Model.Liked.Any()) { <div class="mt-6 text-center"><a href="/explore" class="btn-volt">Find something to love →</a></div> }
+    }
+    else if (Model.Tab == "albums")
+    {
+      if (!Model.Albums.Any())
+      {
+        @Ui.EmptyState("No saved albums yet. Open any album and press Save.")
+      }
+      else
+      {
+        <div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          @foreach (var a in Model.Albums)
+          {
+            <div class="flex flex-col gap-3">
+              @Html.Partial("_AlbumCard", a)
+              <form method="post" action="/albums/@a.Id/save">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@here">
+                <button type="submit" class="chip chip-off w-full justify-center hover:bg-flame hover:text-paper">✕ Remove</button>
+              </form>
+            </div>
+          }
+        </div>
+      }
+    }
+    else
+    {
+      if (!Model.Playlists.Any())
+      {
+        @Ui.EmptyState("No saved playlists yet. Save a public playlist and it lands here.")
+      }
+      else
+      {
+        <div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          @foreach (var p in Model.Playlists)
+          {
+            <div class="flex flex-col gap-3">
+              @Html.Partial("_PlaylistCard", p)
+              <form method="post" action="/playlists/@p.Id/save">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@here">
+                <button type="submit" class="chip chip-off w-full justify-center hover:bg-flame hover:text-paper">✕ Remove</button>
+              </form>
+            </div>
+          }
+        </div>
+      }
+    }
+  </div>
+</section>

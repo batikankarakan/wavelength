@@ -1,0 +1,53 @@
+@{
+    var title = ViewBag.Title as string;
+    var flash = TempData["Flash"] as string;
+    var flashKind = TempData["FlashKind"] as string ?? "ok";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@(string.IsNullOrEmpty(title) ? "Wavelength | Share. Save. Play." : title + " | Wavelength")</title>
+    <meta name="description" content="@(ViewBag.Description ?? "Share, save and listen to music on Wavelength.")">
+    <link rel="icon" href="~/Content/img/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="~/Content/fonts/fonts.css">
+    <link rel="stylesheet" href="~/Content/site.css">
+</head>
+<body data-signed-in="@(Request.IsAuthenticated ? "true" : "false")">
+    @* Antiforgery token for AJAX requests (sent as the X-CSRF-TOKEN header by site.js) *@
+    <div id="csrf" hidden>@Html.AntiForgeryToken()</div>
+
+    @Html.Action("Nav", "Partials", new { active = ViewBag.Nav as string })
+
+    @if (!string.IsNullOrEmpty(flash))
+    {
+        <div class="toast fixed left-1/2 top-24 z-[60] w-[min(92vw,32rem)] -translate-x-1/2" role="status">
+            <div class="brut flex items-center gap-3 px-5 py-4 font-mono text-sm font-bold @(flashKind == "error" ? "bg-flame text-paper" : "bg-mint")">
+                <span class="text-xl">@(flashKind == "error" ? "!" : "✓")</span><span>@flash</span>
+            </div>
+        </div>
+    }
+
+    <main>
+        @RenderBody()
+    </main>
+
+    @if (ViewBag.HideFooter != true)
+    {
+        @Html.Partial("_Footer")
+    }
+
+    <!-- global audio player (Vue island, keeps the queue across page loads) -->
+    <div id="player-root"></div>
+
+    <script src="~/Scripts/jquery-3.7.1.min.js"></script>
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+    <script src="~/Scripts/jquery.unobtrusive-ajax.min.js"></script>
+    <script src="~/Scripts/vue.global.prod.js"></script>
+    <script src="~/Scripts/site.js"></script>
+    <script src="~/Scripts/player.js"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

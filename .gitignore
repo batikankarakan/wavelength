@@ -1,0 +1,13 @@
+packages/
+bin/
+obj/
+.vs/
+*.user
+uploads/*
+!uploads/.gitkeep
+App_Data/*.mdf
+App_Data/*.ldf
+node_modules/
+.DS_Store
+tools/compile-check/views-*/
+mono_crash.*

@@ -1,0 +1,82 @@
+@model SearchVm
+@using Wavelength.Web.Infrastructure
+@{
+    var all = Model.Type == "all";
+    var hasFilter = Model.HasFilter;
+}
+<div data-url="@Model.Url()">
+<section class="mx-auto max-w-7xl px-6 py-10">
+  <div class="flex flex-col gap-6">
+    <div class="flex flex-wrap items-center gap-2" aria-label="Type">
+      <span class="eyebrow mr-2 w-16">Type</span>
+      @foreach (var t in SearchVm.Types) { <a href="@Model.Url(type: t.Item1)" data-filter="type" data-value="@t.Item1" class="chip @(Model.Type == t.Item1 ? "chip-on" : "chip-off")">@t.Item2</a> }
+    </div>
+    <div class="flex flex-wrap items-center gap-2" aria-label="Genre">
+      <span class="eyebrow mr-2 w-16">Genre</span>
+      <a href="@Model.Url(clearGenre: true)" data-filter="genre" data-value="" class="chip @(Model.Genre == null ? "chip-on" : "chip-off")">Any</a>
+      @foreach (var g in Model.Genres)
+      {
+        <a href="@Model.Url(genre: g.Slug)" data-filter="genre" data-value="@g.Slug" class="chip @(Model.Genre == g.Slug ? "chip-on" : "chip-off")"><span class="mr-2 inline-block h-3 w-3 border-2 border-ink" style="background:@g.Color"></span>@g.Name</a>
+      }
+    </div>
+    <div class="flex flex-wrap items-center gap-2" aria-label="Sort">
+      <span class="eyebrow mr-2 w-16">Sort</span>
+      @foreach (var s in SearchVm.Sorts) { <a href="@Model.Url(sort: s.Item1)" data-filter="sort" data-value="@s.Item1" class="chip @(Model.Sort == s.Item1 ? "chip-on" : "chip-off")">@s.Item2</a> }
+    </div>
+  </div>
+  @if (hasFilter) { <p class="mt-8 font-mono text-sm"><b>@Model.Total</b> result@(Model.Total == 1 ? "" : "s")@(all ? " (top matches per type)" : "")</p> }
+</section>
+
+<div class="mx-auto max-w-7xl space-y-16 px-6 pb-24">
+  @if (hasFilter && Model.Total == 0)
+  {
+    @Ui.EmptyState("No matches. Try fewer words, another genre, or browse Explore.")
+  }
+  @if (all || Model.Type == "tracks")
+  {
+    if (Model.Tracks.Any() || !all)
+    {
+      <section>
+        <div class="mb-6 flex items-end justify-between gap-4">
+          <h2 class="display text-5xl md:text-6xl">@(hasFilter ? "Tracks" : "Popular tracks")</h2>
+          @if (all && Model.Tracks.Count >= 6) { <a href="@Model.Url(type: "tracks")" data-filter="type" data-value="tracks" class="btn-paper btn-sm">All tracks →</a> }
+        </div>
+        @Html.Partial("_TrackList", new TrackListVm { Tracks = Model.Tracks, ShowAlbum = true, Empty = "No tracks match." })
+      </section>
+    }
+  }
+  @if ((all && Model.Artists.Any()) || Model.Type == "artists")
+  {
+    <section>
+      <div class="mb-6 flex items-end justify-between gap-4">
+        <h2 class="display text-5xl md:text-6xl">Artists</h2>
+        @if (all) { <a href="@Model.Url(type: "artists")" data-filter="type" data-value="artists" class="btn-paper btn-sm">All artists →</a> }
+      </div>
+      @if (!Model.Artists.Any()) { @Ui.EmptyState("No artists match.") }
+      <div class="grid grid-cols-2 gap-5 md:grid-cols-4">@foreach (var a in Model.Artists) { <div data-reveal>@Html.Partial("_ArtistCard", a)</div> }</div>
+    </section>
+  }
+  @if ((all && Model.Albums.Any()) || Model.Type == "albums")
+  {
+    <section>
+      <div class="mb-6 flex items-end justify-between gap-4">
+        <h2 class="display text-5xl md:text-6xl">Albums</h2>
+        @if (all) { <a href="@Model.Url(type: "albums")" data-filter="type" data-value="albums" class="btn-paper btn-sm">All albums →</a> }
+      </div>
+      @if (!Model.Albums.Any()) { @Ui.EmptyState("No albums match.") }
+      <div class="grid grid-cols-2 gap-5 md:grid-cols-4">@foreach (var a in Model.Albums) { <div data-reveal>@Html.Partial("_AlbumCard", a)</div> }</div>
+    </section>
+  }
+  @if ((all && Model.Playlists.Any()) || Model.Type == "playlists")
+  {
+    <section>
+      <div class="mb-6 flex items-end justify-between gap-4">
+        <h2 class="display text-5xl md:text-6xl">Playlists</h2>
+        @if (all) { <a href="@Model.Url(type: "playlists")" data-filter="type" data-value="playlists" class="btn-paper btn-sm">All playlists →</a> }
+      </div>
+      @if (!Model.Playlists.Any()) { @Ui.EmptyState("No playlists match.") }
+      <div class="grid grid-cols-2 gap-5 md:grid-cols-4">@foreach (var p in Model.Playlists) { <div data-reveal>@Html.Partial("_PlaylistCard", p)</div> }</div>
+    </section>
+  }
+</div>
+</div>

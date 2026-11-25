@@ -1,0 +1,48 @@
+@model AlbumPageVm
+@using Wavelength.Web.Infrastructure
+@{
+    var al = Model.Album;
+    var here = "/albums/" + al.Id;
+    var color = Fmt.ColorFor(al.Id + 1);
+    var signedIn = Request.IsAuthenticated;
+}
+<section class="relative overflow-hidden border-b-2 border-ink page-top">
+  <div class="halftone absolute -right-20 top-20 hidden h-[26rem] w-[26rem] opacity-20 lg:block"></div>
+  <div class="relative mx-auto grid max-w-7xl items-end gap-10 px-6 pb-16 md:grid-cols-[22rem_1fr]">
+    <div data-tilt="6" class="relative">
+      <span class="sticker absolute -left-4 -top-4 z-10 bg-volt">@al.Type</span>
+      <div class="brut bg-white p-3">@Html.Cover(new CoverVm { Url = al.CoverUrl, Color = color, Label = al.Title })</div>
+    </div>
+    <div>
+      <p class="eyebrow">/ @(al.Type == "ep" ? "EP" : al.Type)</p>
+      <h1 data-hop class="display mt-3 text-[clamp(3.5rem,9vw,8rem)]">@al.Title</h1>
+      <p class="mt-4 font-mono text-sm">
+        <a href="/artists/@al.ArtistId" class="font-bold underline hover:bg-volt">@al.Artist@(Model.ArtistVerified ? " ✓" : "")</a>
+        · @al.ReleaseDate.ToString("d MMM yyyy") · @Model.Tracks.Count track@(Model.Tracks.Count == 1 ? "" : "s") · @PublicHelpers.TotalDuration(Model.Tracks) · @Model.Saves save@(Model.Saves == 1 ? "" : "s")
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        @if (Model.Tracks.Any()) { <button type="button" data-play-all="@string.Join(",", Model.Tracks.Select(t => t.Id))" class="btn-volt">▶ Play all</button> }
+        @if (signedIn)
+        {
+          using (Html.BeginForm("Save", "Albums", new { id = al.Id }, FormMethod.Post))
+          {
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnUrl" value="@here">
+            <button class="@(Model.Saved ? "btn-ink" : "btn-paper")">@(Model.Saved ? "✓ Saved" : "＋ Save album")</button>
+          }
+        }
+        else { <a href="/login?returnUrl=@Uri.EscapeDataString(here)" class="btn-paper">＋ Save album</a> }
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section">
+  @Html.Partial("_TrackList", new TrackListVm { Tracks = Model.Tracks, Empty = "No published tracks on this album yet." })
+  @if (Model.More.Any())
+  {
+    <div class="mt-20">
+      @Html.Partial("_PubSectionHead", new PubSectionHeadVm("More", "More by " + al.Artist + ".", ("/artists/" + al.ArtistId), "Artist page"))
+      <div class="mt-10 grid grid-cols-2 gap-5 md:grid-cols-4">@foreach (var m in Model.More) { <div data-reveal>@Html.Partial("_AlbumCard", m)</div> }</div>
+    </div>
+  }
+</section>

@@ -1,0 +1,90 @@
+@model ContactForm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.Title = "Contact";
+    var sent = Request.QueryString["sent"] == "1" && TempData["SentEmail"] != null;
+}
+<section class="relative overflow-hidden border-b-2 border-ink pt-32">
+  <div class="halftone absolute -right-10 top-24 hidden h-96 w-96 opacity-20 md:block"></div>
+  <div class="relative mx-auto max-w-7xl px-6 pb-16">
+    <span class="sticker bg-mint">Contact</span>
+    <h1 data-hop class="display mt-8 text-[clamp(5rem,16vw,15rem)]">Say <span class="inline-block -rotate-2 border-2 border-ink bg-volt px-4 shadow-brut">hi.</span></h1>
+    <p class="mt-6 max-w-xl text-xl font-medium">Feedback, ideas, bugs or just a hello. We read everything.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="grid gap-10 lg:grid-cols-5">
+    <div class="space-y-6 lg:col-span-2">
+      <div data-reveal class="brut bg-volt p-6"><p class="eyebrow">Email</p><p class="display mt-1 break-all text-3xl">hello@@wavelength.app</p></div>
+      <div data-reveal="100" class="brut bg-white p-6"><p class="eyebrow">Where</p><p class="display mt-1 text-3xl">Istanbul, Türkiye</p></div>
+      <div data-reveal="200" class="brut bg-cobalt p-6 text-paper"><p class="eyebrow">Response time</p><p class="display mt-1 text-3xl">Usually within 24h</p></div>
+      <div data-reveal="300" class="flex gap-3">
+        <a href="#" class="btn-paper !px-5">IG</a><a href="#" class="btn-paper !px-5">X</a><a href="#" class="btn-paper !px-5">GH</a>
+      </div>
+    </div>
+
+    <div data-reveal class="brut bg-white p-6 md:p-10 lg:col-span-3">
+      @if (sent)
+      {
+        <div class="py-12 text-center">
+          <span class="sticker bg-mint text-base">✓ Sent</span>
+          <h2 data-hop class="display mt-6 text-7xl">Got it!</h2>
+          <p class="mt-4 font-mono">Thanks @TempData["SentName"]. We'll reply to <b>@TempData["SentEmail"]</b> soon.</p>
+          <a href="/contact" class="btn-paper mt-8">Send another</a>
+        </div>
+      }
+      else
+      {
+        @* Validated twice: in the browser by jQuery unobtrusive validation (from the DataAnnotations on ContactForm)
+           and again on the server. *@
+        using (Html.BeginForm("Contact", "Pages", FormMethod.Post, new { @class = "space-y-6", id = "contact-form" }))
+        {
+          @Html.AntiForgeryToken()
+          <div class="grid gap-6 md:grid-cols-2">
+            @Html.BrutField(m => m.Name, "Name", placeholder: "Your name", autocomplete: "name")
+            @Html.BrutField(m => m.Email, "Email", "email", "you@example.com", "email")
+          </div>
+          <div>
+            <p class="eyebrow mb-2">Topic</p>
+            @Html.HiddenFor(m => m.Topic, new { id = "contact-topic" })
+            <div class="flex flex-wrap gap-3" id="topic-chips">
+              @foreach (var t in ContactForm.Topics)
+              {
+                <button type="button" data-topic="@t.Item1" class="border-2 border-ink px-4 py-2 font-mono text-sm font-bold uppercase transition hover:-translate-y-0.5 @(Model.Topic == t.Item1 ? "bg-ink text-paper shadow-brut-sm" : "bg-paper")">@t.Item2</button>
+              }
+            </div>
+            @Html.ValidationMessageFor(m => m.Topic, null, new { @class = "err block" })
+          </div>
+          <div>
+            @Html.LabelFor(m => m.Message, "Message", new { @class = "label" })
+            @Html.TextAreaFor(m => m.Message, new { @class = "field resize-none", rows = 6, maxlength = 500, placeholder = "What's on your mind?" })
+            <div class="mt-2 flex justify-between font-mono text-sm">
+              <div>@Html.ValidationMessageFor(m => m.Message, null, new { @class = "err block !mt-0" })</div>
+              <p><span id="message-count">@((Model.Message ?? "").Length)</span>/500</p>
+            </div>
+          </div>
+          <button type="submit" class="btn-volt w-full" id="contact-submit">Send message →</button>
+        }
+      }
+    </div>
+  </div>
+</section>
+
+@section Scripts {
+<script>
+  // jQuery: topic chips fill the hidden Topic field, live character counter, "Sending…" state after client validation passes
+  $(function () {
+    var $form = $('#contact-form');
+    $('#topic-chips').on('click', '[data-topic]', function () {
+      $('#contact-topic').val($(this).data('topic'));
+      $('#topic-chips [data-topic]').removeClass('bg-ink text-paper shadow-brut-sm').addClass('bg-paper');
+      $(this).removeClass('bg-paper').addClass('bg-ink text-paper shadow-brut-sm');
+    });
+    $('#Message').on('input', function () { $('#message-count').text(this.value.length); });
+    $form.on('submit', function () {
+      if (!$.fn.valid || $form.valid()) $('#contact-submit').prop('disabled', true).text('Sending…');
+    });
+  });
+</script>
+}

@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/.vs/
+Wavelength.Web/uploads/*
+!Wavelength.Web/uploads/.gitkeep
+Wavelength.Web/App_Data/*.mdf
+Wavelength.Web/App_Data/*.ldf
+tools/
+tests/

@@ -1,0 +1,65 @@
+@model ExploreVm
+@using Wavelength.Web.Infrastructure
+@{ ViewBag.Title = "Explore"; }
+<section class="relative overflow-hidden border-b-2 border-ink page-top">
+  <div class="halftone absolute -right-16 top-24 hidden h-96 w-96 opacity-20 md:block"></div>
+  <div class="relative mx-auto max-w-7xl px-6 pb-16">
+    <span class="sticker bg-cobalt text-paper">Explore</span>
+    <h1 data-hop class="display mt-8 text-[clamp(4rem,12vw,10.5rem)]">Dig <span class="inline-block -rotate-2 border-2 border-ink bg-volt px-4 shadow-brut">deeper.</span></h1>
+    <div class="mt-8 flex max-w-2xl flex-col gap-3 sm:flex-row">
+      <form action="/search" method="get" class="flex flex-1 gap-3" role="search">
+        <input name="q" type="search" class="field" placeholder="SEARCH TRACKS, ARTISTS, ALBUMS" aria-label="Search">
+        <button class="btn-ink shrink-0 !px-5">Go</button>
+      </form>
+      <a href="/charts" class="btn-volt shrink-0">Charts →</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  @Html.Partial("_PubSectionHead", new PubSectionHeadVm("Genres", "Pick a mood.", null, null))
+  <div class="mt-10 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-5">
+    @for (var i = 0; i < Model.Genres.Count; i++) { <div data-reveal="@(i % 5 * 60)">@Html.Partial("_PubGenreTile", Model.Genres[i])</div> }
+  </div>
+</section>
+
+<section class="border-y-2 border-ink bg-mint">
+  <div class="section">
+    @Html.Partial("_PubSectionHead", new PubSectionHeadVm(Model.Personal ? "Made for you" : "Popular right now", Model.Personal ? "For your ears." : "Start here.", "/charts", "Weekly charts"))
+    @if (Model.Personal) { <p class="mt-3 font-mono text-sm">Based on the genres you play the most, with tracks you haven't worn out yet.</p> }
+    <div class="mt-10">@Html.Partial("_TrackList", new TrackListVm { Tracks = Model.ForYou })</div>
+  </div>
+</section>
+
+<section class="section">
+  @Html.Partial("_PubSectionHead", new PubSectionHeadVm("Fresh", "New releases.", "/search?type=tracks&sort=new", "All new tracks"))
+  <div class="mt-10 grid grid-cols-2 gap-5 md:grid-cols-4" data-tracklist>
+    @for (var i = 0; i < Model.NewReleases.Count; i++) { <div data-reveal="@(i % 4 * 60)">@Html.Partial("_TrackCard", Model.NewReleases[i])</div> }
+  </div>
+</section>
+
+<section class="border-y-2 border-ink bg-volt">
+  <div class="section">
+    @Html.Partial("_PubSectionHead", new PubSectionHeadVm("Artists", "Ones to follow.", "/search?type=artists", "All artists"))
+    <div class="mt-10 grid grid-cols-2 gap-5 md:grid-cols-4">
+      @for (var i = 0; i < Model.Artists.Count; i++) { <div data-reveal="@(i % 4 * 60)" data-tilt="5">@Html.Partial("_ArtistCard", Model.Artists[i])</div> }
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="grid gap-16 lg:grid-cols-2">
+    <div>
+      @Html.Partial("_PubSectionHead", new PubSectionHeadVm("Records", "Latest albums.", "/search?type=albums", "More"))
+      <div class="mt-10 grid grid-cols-2 gap-5">
+        @foreach (var a in Model.Albums) { <div data-reveal>@Html.Partial("_AlbumCard", a)</div> }
+      </div>
+    </div>
+    <div>
+      @Html.Partial("_PubSectionHead", new PubSectionHeadVm("Curated", "Playlists.", "/search?type=playlists", "More"))
+      <div class="mt-10 grid grid-cols-2 gap-5">
+        @foreach (var p in Model.Playlists) { <div data-reveal>@Html.Partial("_PlaylistCard", p)</div> }
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,64 @@
+@model SearchVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.Title = Model.Q == "" ? "Search" : "Search: " + Model.Q;
+}
+<section class="relative overflow-hidden border-b-2 border-ink page-top">
+  <div class="relative mx-auto max-w-7xl px-6 pb-12">
+    <span class="sticker bg-volt">Search</span>
+    <h1 data-hop class="display mt-6 text-[clamp(3.5rem,10vw,8rem)]" id="search-title">@(Model.Q == "" ? "Find anything." : "“" + Model.Q + "”")</h1>
+    @* Optional spec 1: search with the MVC AJAX helper (jquery.unobtrusive-ajax) + jQuery. Without JavaScript the
+       same form does a normal GET and SearchResults returns the full page. *@
+    @using (Ajax.BeginForm("SearchResults", "Discover", null,
+        new AjaxOptions
+        {
+            HttpMethod = "GET",
+            UpdateTargetId = "search-results",
+            InsertionMode = InsertionMode.Replace,
+            LoadingElementId = "search-loading",
+            OnComplete = "WL.searchDone()",
+        },
+        new { id = "search-form", @class = "mt-8 flex max-w-3xl gap-3", role = "search" }))
+    {
+      <input type="hidden" name="type" value="@Model.Type" id="search-type">
+      <input type="hidden" name="genre" value="@Model.Genre" id="search-genre">
+      <input type="hidden" name="sort" value="@Model.Sort" id="search-sort">
+      <input name="q" value="@Model.Q" type="search" id="search-q" class="field !text-lg" placeholder="TRACKS, ARTISTS, ALBUMS, PLAYLISTS, LYRICS" aria-label="Search" autocomplete="off" autofocus>
+      <button class="btn-volt shrink-0">Search</button>
+    }
+    <p id="search-loading" class="mt-4 font-mono text-sm font-bold uppercase" style="display:none"><span class="inline-block animate-pulse">♪ Searching…</span></p>
+  </div>
+</section>
+
+<div id="search-results">
+  @Html.Partial("_SearchResults", Model)
+</div>
+
+@section Scripts {
+<script>
+  // jQuery: live search (debounced) and filter chips, both submit the Ajax.BeginForm above.
+  $(function () {
+    var $form = $('#search-form');
+    var timer = null;
+    $('#search-q').on('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () { $form.trigger('submit'); }, 300);
+    });
+    $('#search-results').on('click', 'a[data-filter]', function (e) {
+      e.preventDefault();
+      var $a = $(this);
+      $('#search-' + $a.data('filter')).val($a.attr('data-value'));
+      $form.trigger('submit');
+    });
+  });
+  // called by the AJAX helper when new results arrived: keep the URL shareable and re-run the page effects
+  WL.searchDone = function () {
+    var $root = $('#search-results [data-url]');
+    if ($root.length && window.history && history.replaceState) history.replaceState(null, '', $root.attr('data-url'));
+    var q = $.trim($('#search-q').val());
+    $('#search-title').text(q ? '“' + q + '”' : 'Find anything.');
+    document.title = (q ? 'Search: ' + q : 'Search') + ' | Wavelength';
+    WL.enhance(document.getElementById('search-results'));
+  };
+</script>
+}

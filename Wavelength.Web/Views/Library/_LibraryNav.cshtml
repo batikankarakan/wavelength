@@ -1,0 +1,25 @@
+@model string
+@{
+    var tabs = new[]
+    {
+        Tuple.Create("library", "Library", "/library"),
+        Tuple.Create("playlists", "Playlists", "/library/playlists"),
+        Tuple.Create("history", "History", "/history"),
+        Tuple.Create("following", "Following", "/following"),
+        Tuple.Create("notifications", "Notifications", "/notifications"),
+        Tuple.Create("settings", "Settings", "/settings"),
+    };
+}
+<nav class="mt-10 flex gap-2 overflow-x-auto border-b-2 border-ink pb-0" aria-label="Your library">
+  @foreach (var t in tabs)
+  {
+    if (Model == t.Item1)
+    {
+      <a href="@t.Item3" class="tab shrink-0 tab-on" aria-current="page">@t.Item2</a>
+    }
+    else
+    {
+      <a href="@t.Item3" class="tab shrink-0 tab-off">@t.Item2</a>
+    }
+  }
+</nav>

@@ -1,0 +1,36 @@
+@model StudioHeader
+@using Wavelength.Web.Infrastructure
+@{
+    var tabs = new[]
+    {
+        Tuple.Create("dashboard", "Dashboard", "/studio"),
+        Tuple.Create("upload", "Upload", "/studio/upload"),
+        Tuple.Create("tracks", "My tracks", "/studio/tracks"),
+        Tuple.Create("albums", "Albums", "/studio/albums"),
+        Tuple.Create("profile", "Profile", "/studio/profile"),
+    };
+    var title = ViewBag.StudioTitle as string ?? Model.StageName;
+    var accent = ViewBag.StudioAccent as string ?? "bg-volt";
+    var lead = ViewBag.StudioLead as string;
+}
+<section class="relative overflow-hidden border-b-2 border-ink page-top">
+    <div class="halftone absolute -right-20 top-16 hidden h-80 w-80 opacity-20 lg:block"></div>
+    <div class="relative mx-auto max-w-7xl px-6">
+        <div class="flex flex-wrap items-center gap-3">
+            @Html.Sticker("Artist studio", "bg-ink text-paper")
+            @Html.Sticker(Model.Verified ? "✓ Verified artist" : "Not verified yet", Model.Verified ? "bg-mint" : "bg-paper")
+            <a href="/artists/@Model.ArtistId" class="sticker bg-paper hover:bg-volt">Public page ↗</a>
+        </div>
+        <h1 data-hop class="display mt-6 text-[clamp(3.5rem,9vw,8rem)]"><span class="inline-block -rotate-1 border-2 border-ink @accent px-4 shadow-brut">@title</span></h1>
+        @if (lead != null)
+        {
+            <p class="mt-6 max-w-2xl text-xl font-medium">@lead</p>
+        }
+        <nav class="mt-10 flex flex-wrap gap-2 overflow-x-auto" aria-label="Studio">
+            @foreach (var t in tabs)
+            {
+                <a href="@t.Item3" class="tab @(Model.Active == t.Item1 ? "tab-on" : "tab-off")" aria-current="@(Model.Active == t.Item1 ? "page" : null)">@t.Item2</a>
+            }
+        </nav>
+    </div>
+</section>

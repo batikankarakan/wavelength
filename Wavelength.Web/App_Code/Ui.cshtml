@@ -1,0 +1,26 @@
+@* Razor @helper functions shared by the views: @Ui.SectionHead(...), @Ui.EmptyState(...), @Ui.StatCard(...) *@
+
+@helper SectionHead(string eyebrow, string title, string accent = null)
+{
+    <div data-reveal>
+        <span class="eyebrow">/ @eyebrow</span>
+        <h2 data-hop class="display mt-3 text-5xl md:text-7xl">@title @if (accent != null) {<span class="text-cobalt">@accent</span>}</h2>
+    </div>
+}
+
+@helper EmptyState(string message)
+{
+    <div class="border-2 border-dashed border-ink bg-paper/60 p-10 text-center">
+        <p class="display text-4xl">Silence.</p>
+        <p class="mt-2 font-mono text-sm">@message</p>
+    </div>
+}
+
+@helper StatCard(string label, string value, string bg = "bg-white", string note = null)
+{
+    <div class="brut @bg p-6" data-reveal>
+        <p class="eyebrow text-xs">@label</p>
+        <p class="display mt-2 text-6xl">@value</p>
+        @if (note != null) { <p class="mt-2 font-mono text-xs">@note</p> }
+    </div>
+}

@@ -1,0 +1,37 @@
+@model Wavelength.Web.Controllers.ForgotForm
+@using Wavelength.Web.Infrastructure
+@{ ViewBag.Title = "Forgot password"; ViewBag.HideFooter = true; var sent = ViewBag.Sent == true; }
+<section class="grid min-h-screen border-b-2 border-ink pt-[66px] lg:grid-cols-2">
+    @Html.Partial("_AuthAside", new AuthAsideVm { Sticker = "Happens to everyone", Line1 = "Lost", Highlight = "the", Line3 = "key?", Text = "Tell us your email and we will send you a link to set a new password.", Color = "bg-mint text-ink" })
+    <div class="flex items-center justify-center px-6 py-16">
+        <div class="w-full max-w-md">
+            @Html.Sticker("Reset password")
+            @if (!sent)
+            {
+                <h1 data-hop class="display mt-6 text-7xl">Forgot it?</h1>
+                using (Html.BeginForm("Forgot", "Account", FormMethod.Post, new { @class = "brut mt-8 space-y-5 bg-white p-6 md:p-8" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.BrutField(m => m.Email, "Email", "email", "you@example.com", "email")
+                    <button type="submit" class="btn-volt w-full">Send reset link →</button>
+                    <p class="text-center font-mono text-sm">@Html.ActionLink("← Back to log in", "Login", "Account", null, new { @class = "underline" })</p>
+                }
+            }
+            else
+            {
+                <h1 data-hop class="display mt-6 text-7xl">Check your inbox.</h1>
+                <div class="brut mt-8 bg-white p-6 md:p-8">
+                    <p class="font-mono text-sm">If an account exists for <b>@ViewBag.Email</b>, a reset link is on its way. The link works for one hour.</p>
+                    @if (ViewBag.DevLink != null)
+                    {
+                        <div class="mt-6 border-2 border-dashed border-ink bg-volt/40 p-4">
+                            <p class="eyebrow text-xs">Demo mode · no mail server</p>
+                            <a href="@ViewBag.DevLink" class="mt-2 block break-all font-mono text-sm font-bold underline">Open the reset link →</a>
+                        </div>
+                    }
+                    @Html.ActionLink("Back to log in", "Login", "Account", null, new { @class = "btn-paper mt-6 w-full" })
+                </div>
+            }
+        </div>
+    </div>
+</section>

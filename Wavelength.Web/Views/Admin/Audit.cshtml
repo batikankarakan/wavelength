@@ -1,0 +1,68 @@
+@model AdminAuditVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.Title = "Audit log";
+    var actions = new SelectList(Model.Actions, Model.Action);
+    var admins = new SelectList(Model.Admins, "Id", "Name", Model.AdminId);
+}
+@Html.Partial("_AdminNav", new AdminNavVm { Active = "audit", Title = "Audit log.", Sub = "Who did what and when. Every action in this console is recorded here and cannot be edited." })
+
+<section class="section !pt-12">
+    <form method="get" action="/admin/audit" class="brut grid gap-4 bg-white p-5 md:grid-cols-2 lg:grid-cols-[1fr_11rem_11rem_10rem_10rem_auto] lg:items-end">
+        <div>
+            <label for="q" class="label">Search</label>
+            @Html.TextBox("q", Model.Q, new { id = "q", type = "search", @class = "field", placeholder = "Target or action" })
+        </div>
+        <div>
+            <label for="action-filter" class="label">Action</label>
+            @* named "action" in the query string; read with Request.QueryString in the controller *@
+            <select id="action-filter" name="action" class="field">
+                <option value="">All</option>
+                @foreach (var a in actions) { <option value="@a.Value" selected="@a.Selected">@a.Text</option> }
+            </select>
+        </div>
+        <div>
+            <label for="adminId" class="label">By</label>
+            @Html.DropDownList("adminId", admins, "Anyone", new { id = "adminId", @class = "field" })
+        </div>
+        <div>
+            <label for="from" class="label">From</label>
+            @Html.TextBox("from", Model.From.HasValue ? Model.From.Value.ToString("yyyy-MM-dd") : "", new { id = "from", type = "date", @class = "field !px-2" })
+        </div>
+        <div>
+            <label for="to" class="label">To</label>
+            @Html.TextBox("to", Model.To.HasValue ? Model.To.Value.ToString("yyyy-MM-dd") : "", new { id = "to", type = "date", @class = "field !px-2" })
+        </div>
+        <div class="flex gap-2">
+            <button class="btn-volt">Filter</button>
+            <a href="/admin/audit" class="btn-paper">Reset</a>
+        </div>
+    </form>
+
+    <p class="mt-8 font-mono text-sm font-bold uppercase">@AdminUi.Plural(Model.Total, "record")</p>
+    @if (!Model.Rows.Any())
+    {
+        <div class="mt-4">@Ui.EmptyState("No actions match these filters.")</div>
+    }
+    else
+    {
+        <div class="brut mt-4 overflow-x-auto bg-white">
+            <table class="tbl min-w-[48rem]">
+                <thead><tr><th>#</th><th>When (UTC)</th><th>By</th><th>Action</th><th>Target</th></tr></thead>
+                <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td class="font-mono text-xs text-ink/60">@r.Id</td>
+                            <td class="whitespace-nowrap font-mono text-xs">@r.CreatedAt.ToString("d MMM yyyy HH:mm")<br><span class="text-ink/60">@Fmt.Ago(r.CreatedAt)</span></td>
+                            <td class="whitespace-nowrap"><a href="/users/@r.AdminUsername" class="font-mono text-sm font-bold underline">@r.Admin</a><br><span class="font-mono text-[11px] uppercase">@r.AdminRole</span></td>
+                            <td><a href="/admin/audit?action=@Url.Encode(r.Action)" class="status @AdminUi.ActionColor(r.Action)">@r.Action</a></td>
+                            <td class="font-mono text-sm">@r.Target</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    @Html.Partial("_Pager", Model.Pager)
+</section>

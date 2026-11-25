@@ -1,0 +1,53 @@
+@model UserPageVm
+@using Wavelength.Web.Infrastructure
+@{
+    var u = Model.Profile;
+    var here = "/users/" + u.Username;
+    var roleLabel = u.Role == "artist" ? "Artist" : u.Role == "moderator" ? "Moderator" : u.Role == "admin" ? "Admin" : "Listener";
+}
+<section class="relative overflow-hidden border-b-2 border-ink page-top">
+  <div class="halftone absolute -right-16 top-24 hidden h-96 w-96 opacity-20 md:block"></div>
+  <div class="relative mx-auto grid max-w-7xl items-end gap-10 px-6 pb-16 md:grid-cols-[16rem_1fr]">
+    <div data-tilt="6" class="w-48 md:w-64">
+      <div class="shadow-brut">@Html.Cover(new CoverVm { Url = u.AvatarUrl, Color = Fmt.ColorFor(u.Id), Label = u.DisplayName })</div>
+    </div>
+    <div>
+      <div class="flex flex-wrap gap-2">
+        <span class="sticker @(u.Role == "listener" ? "bg-paper" : "bg-volt")">@roleLabel</span>
+        @if (!u.IsActive) { <span class="sticker bg-flame text-paper">Suspended</span> }
+        <span class="sticker bg-paper">Joined @u.CreatedAt.ToString("MMM yyyy")</span>
+      </div>
+      <h1 data-hop class="display mt-4 break-words text-[clamp(3.5rem,9vw,8rem)]">@u.DisplayName</h1>
+      <p class="font-mono text-sm">@@@u.Username</p>
+      @if (!string.IsNullOrWhiteSpace(u.Bio)) { <p class="mt-4 max-w-2xl text-xl font-medium">@u.Bio</p> }
+      <div class="mt-6 flex flex-wrap gap-6 font-mono text-sm">
+        <span><b class="display text-3xl">@Model.Followers</b> followers</span>
+        <span><b class="display text-3xl">@Model.Following</b> following</span>
+        <span><b class="display text-3xl">@Model.LikedCount</b> liked tracks</span>
+      </div>
+      <div class="mt-8 flex flex-wrap items-center gap-3">
+        @if (Model.IsSelf) { <a href="/settings" class="btn-ink">✎ Edit profile</a> }
+        else { @Html.Partial("_PubFollow", new PubFollowVm(u.Id, Model.IsFollowing, here, "")) }
+        @if (Model.ArtistId != null) { <a href="/artists/@Model.ArtistId" class="btn-cobalt">Artist page →</a> }
+        @if (!Model.IsSelf) { @Html.Partial("_PubReport", new PubReportVm("reportedUserId", u.Id, "Report user", here)) }
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section">
+  @Html.Partial("_PubSectionHead", new PubSectionHeadVm("Playlists", "Public playlists.", null, null))
+  @if (Model.IsSelf && Model.PrivatePlaylists > 0) { <p class="mt-3 font-mono text-sm">+ @Model.PrivatePlaylists private playlist@(Model.PrivatePlaylists == 1 ? "" : "s") only you can see. <a href="/library/playlists" class="font-bold underline">Manage →</a></p> }
+  <div class="mt-10">
+    @if (!Model.Playlists.Any()) { @Ui.EmptyState("No public playlists yet.") }
+    <div class="grid grid-cols-2 gap-5 md:grid-cols-4">@foreach (var p in Model.Playlists) { <div data-reveal>@Html.Partial("_PlaylistCard", p)</div> }</div>
+  </div>
+</section>
+@if (Model.FollowsArtists.Any())
+{
+<section class="border-t-2 border-ink bg-volt">
+  <div class="section">
+    @Html.Partial("_PubSectionHead", new PubSectionHeadVm("Following", "Artists they follow.", null, null))
+    <div class="mt-10 grid grid-cols-2 gap-5 md:grid-cols-4">@foreach (var a in Model.FollowsArtists) { <div data-reveal data-tilt="5">@Html.Partial("_ArtistCard", a)</div> }</div>
+  </div>
+</section>
+}

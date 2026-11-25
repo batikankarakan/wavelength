@@ -1,0 +1,80 @@
+@model ChartsVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.Title = "Weekly charts";
+    var maxPlays = Math.Max(1, Model.Tracks.FirstOrDefault()?.Plays ?? 1);
+}
+<section class="relative overflow-hidden border-b-2 border-ink page-top">
+  <div class="halftone absolute -right-20 top-20 hidden h-[26rem] w-[26rem] opacity-20 lg:block"></div>
+  <div class="relative mx-auto grid max-w-7xl gap-10 px-6 pb-16 lg:grid-cols-[1.4fr_1fr] lg:items-end">
+    <div>
+      <span class="sticker bg-flame text-paper">Weekly charts</span>
+      <h1 data-hop class="display mt-8 text-[clamp(4.5rem,13vw,11rem)]">Top <span class="inline-block -rotate-2 border-2 border-ink bg-volt px-4 shadow-brut">20.</span></h1>
+      <p class="mt-6 max-w-xl text-xl font-medium">Counted from real plays between @Model.From.ToString("d MMM") and @Model.To.ToString("d MMM yyyy"). Arrows compare with the week before.</p>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="brut bg-ink p-5 text-paper"><p class="display text-6xl text-volt" data-count="@Model.TotalPlays">@Model.TotalPlays</p><p class="font-mono text-xs uppercase">plays this week</p></div>
+      <div class="brut bg-cobalt p-5 text-paper"><p class="display text-6xl" data-count="@Model.Listeners">@Model.Listeners</p><p class="font-mono text-xs uppercase">listeners</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="grid gap-14 lg:grid-cols-[1fr_24rem]">
+    <div>
+      <div class="mb-6 flex items-end justify-between gap-4">
+        <h2 data-hop class="display text-5xl md:text-7xl">Tracks</h2>
+        @if (Model.Tracks.Any()) { <button type="button" data-play-all="@string.Join(",", Model.Tracks.Select(t => t.Track.Id))" class="btn-volt btn-sm">▶ Play the chart</button> }
+      </div>
+      @if (!Model.Tracks.Any())
+      {
+        @Ui.EmptyState("Nobody played anything this week. Be the first.")
+      }
+      else
+      {
+      <div class="brut bg-paper" data-tracklist>
+        @foreach (var row in Model.Tracks)
+        {
+          var t = row.Track;
+          <div class="group relative flex items-center gap-3 border-b-2 border-ink p-3 transition last:border-b-0 hover:bg-volt md:gap-4 md:p-4" data-track-row="@t.Id">
+            <div class="pointer-events-none absolute inset-y-0 left-0 bg-ink/5" style="width:@((row.Plays * 100 / maxPlays))%"></div>
+            <span class="display relative w-12 text-center text-5xl @(row.Rank <= 3 ? "text-flame" : "text-ink/40 group-hover:text-ink")">@row.Rank</span>
+            <span class="relative hidden w-16 sm:block">@Html.Partial("_PubMove", row)</span>
+            <button type="button" data-play="@t.Id" class="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden border-2 border-ink" style="background:@t.Color" aria-label="Play @t.Title">
+              @if (t.CoverUrl != null) { <img src="@t.CoverUrl" alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover"> }
+              <span class="relative flex h-8 w-8 items-center justify-center border-2 border-ink bg-paper text-sm" data-play-icon>▶</span>
+            </button>
+            <span class="relative min-w-0 flex-1">
+              <a href="/tracks/@t.Id" class="display block truncate text-2xl hover:underline md:text-3xl">@t.Title</a>
+              <a href="/artists/@t.ArtistId" class="block truncate font-mono text-sm hover:underline">@t.Artist</a>
+            </span>
+            <span class="relative hidden text-right font-mono text-sm md:block"><b>@row.Plays</b> plays<br><span class="text-ink/60">@(row.PrevRank == null ? "new entry" : "last week #" + row.PrevRank)</span></span>
+            <button type="button" data-like="@t.Id" aria-pressed="@(t.Liked ? "true" : "false")" class="relative flex h-9 w-9 shrink-0 items-center justify-center border-2 border-ink font-mono text-lg @(t.Liked ? "bg-flame text-paper" : "bg-paper")" aria-label="Like @t.Title">♥</button>
+          </div>
+        }
+      </div>
+      }
+    </div>
+    <aside>
+      <h2 data-hop class="display mb-6 text-5xl md:text-7xl">Artists</h2>
+      @if (!Model.Artists.Any()) { @Ui.EmptyState("No artist plays this week.") }
+      <ol class="brut divide-y-2 divide-ink bg-white">
+        @foreach (var row in Model.Artists)
+        {
+          var a = row.Artist;
+          <li>
+            <a href="/artists/@a.Id" class="flex items-center gap-3 p-3 hover:bg-volt">
+              <span class="display w-9 text-center text-4xl @(row.Rank <= 3 ? "text-cobalt" : "text-ink/40")">@row.Rank</span>
+              @Html.Avatar(a.AvatarUrl, a.StageName, "h-12 w-12 text-xl rounded-full")
+              <span class="min-w-0 flex-1">
+                <span class="display block truncate text-2xl">@a.StageName@(a.Verified ? " ✓" : "")</span>
+                <span class="font-mono text-xs">@row.Plays plays · @row.Listeners listeners</span>
+              </span>
+              @Html.Partial("_PubMove", row)
+            </a>
+          </li>
+        }
+      </ol>
+    </aside>
+  </div>
+</section>

@@ -1,0 +1,115 @@
+@model ReviewVm
+@using Wavelength.Web.Infrastructure
+@{ ViewBag.Title = "Review queue"; }
+@Html.Partial("_AdminNav", new AdminNavVm { Active = "review", Title = "Review queue.", Sub = "Every upload waits here before it goes public. Listen, check the details, then approve it or reject it with a reason the artist will see." })
+
+<section class="section !pt-12">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+            <span class="eyebrow">/ Pending · oldest first</span>
+            <h2 class="display mt-2 text-5xl md:text-6xl">@Model.Pending.Count waiting<span class="text-flame">.</span></h2>
+        </div>
+        <p class="font-mono text-xs">@Model.RejectedCount rejected tracks are back with their artists.</p>
+    </div>
+
+    @if (!Model.Pending.Any())
+    {
+        <div class="mt-8">@Ui.EmptyState("The queue is empty. Nice work.")</div>
+    }
+
+    <div class="mt-8 space-y-8">
+        @for (var i = 0; i < Model.Pending.Count; i++)
+        {
+            var t = Model.Pending[i];
+            <article data-reveal="@(i * 60)" class="brut grid gap-0 bg-white md:grid-cols-[16rem_1fr]" data-tracklist>
+                <div class="relative border-b-2 border-ink p-4 md:border-b-0 md:border-r-2" style="background:@t.Color">
+                    @Html.Cover(new CoverVm { Url = t.CoverUrl, Color = t.Color, Label = t.Title })
+                    <button type="button" data-play="@t.Id" class="absolute bottom-7 right-7 flex h-14 w-14 items-center justify-center border-2 border-ink bg-volt text-xl shadow-brut-sm transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none" aria-label="Listen to @t.Title"><span data-play-icon>▶</span></button>
+                </div>
+                <div class="flex flex-col p-6">
+                    <div class="flex flex-wrap items-center gap-2">
+                        @Html.StatusBadge(TrackStatus.Pending)
+                        <span class="font-mono text-xs">#@t.Id · uploaded @Fmt.Ago(t.CreatedAt) · @Fmt.Duration(t.DurationSec)</span>
+                    </div>
+                    <h3 class="display mt-3 text-4xl md:text-5xl">@t.Title</h3>
+                    <p class="font-mono text-sm"><a href="/artists/@t.ArtistId" class="underline">@t.Artist@(t.Verified ? " ✓" : "")</a>@if (t.AlbumTitle != null) {<span> · @t.AlbumTitle</span>}</p>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        @foreach (var g in t.Genres) { <span class="sticker" style="background:@g.Color;color:@Fmt.On(g.Color)">@g.Name</span> }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(t.Lyrics))
+                    {
+                        <details class="mt-4 border-2 border-ink bg-paper p-3">
+                            <summary class="cursor-pointer font-mono text-xs font-bold uppercase">Lyrics (@t.Lyrics.Split('\n').Length lines)</summary>
+                            <p class="prose-lyrics mt-3 max-h-48 overflow-y-auto">@t.Lyrics</p>
+                        </details>
+                    }
+                    else
+                    {
+                        <p class="mt-4 font-mono text-xs text-ink/60">No lyrics provided.</p>
+                    }
+
+                    <div class="mt-auto pt-6">
+                        <div class="flex flex-wrap gap-3">
+                            @using (Html.BeginForm("Approve", "Admin", new { id = t.Id }, FormMethod.Post, null))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button class="btn-mint btn-sm">✓ Approve &amp; publish</button>
+                            }
+                            <button type="button" class="btn-flame btn-sm" data-toggle="#reject-@t.Id" aria-expanded="false">✕ Reject…</button>
+                        </div>
+                        @using (Html.BeginForm("Reject", "Admin", new { id = t.Id }, FormMethod.Post, new { id = "reject-" + t.Id, @class = "mt-4 hidden border-2 border-ink bg-paper p-4" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <label for="reason-@t.Id" class="label">Reason for the artist</label>
+                            @* Same rules as RejectForm: required, 5-200 characters (jQuery unobtrusive validation + server check) *@
+                            @Html.TextArea("Reason", null, 3, 0, new
+                            {
+                                id = "reason-" + t.Id, @class = "field resize-none", maxlength = "200",
+                                placeholder = "e.g. The audio clips at the end. Please fix the master and resubmit.",
+                                data_val = "true",
+                                data_val_required = "Tell the artist why the track is rejected.",
+                                data_val_length = "A rejection reason of 5 to 200 characters is required.",
+                                data_val_length_min = "5", data_val_length_max = "200",
+                            })
+                            @Html.ValidationMessage("Reason", null, new { @class = "err block" })
+                            <p class="hint">5–200 characters. The artist gets this in a notification and can edit and resubmit.</p>
+                            <button class="btn-flame btn-sm mt-3">Send rejection</button>
+                        }
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+<section class="border-t-2 border-ink bg-mint">
+    <div class="section !py-16">
+        <span class="eyebrow">/ Hidden after a report</span>
+        <h2 class="display mt-2 text-5xl">Hidden tracks</h2>
+        @if (!Model.Hidden.Any())
+        {
+            <p class="mt-6 font-mono text-sm">No hidden tracks. Tracks hidden from the reports page show up here.</p>
+        }
+        else
+        {
+            <div class="brut mt-8 bg-paper" data-tracklist>
+                @foreach (var t in Model.Hidden)
+                {
+                    <div class="flex flex-wrap items-center gap-4 border-b-2 border-ink p-4 last:border-b-0">
+                        <button type="button" data-play="@t.Id" class="flex h-14 w-14 shrink-0 items-center justify-center border-2 border-ink text-xl" style="background:@t.Color;color:@Fmt.On(t.Color)" aria-label="Listen to @t.Title"><span data-play-icon>▶</span></button>
+                        <div class="min-w-0 flex-1">
+                            <p class="display truncate text-2xl">@t.Title</p>
+                            <p class="font-mono text-xs">@t.Artist · @Fmt.Duration(t.DurationSec)</p>
+                        </div>
+                        @Html.StatusBadge(TrackStatus.Hidden)
+                        @using (Html.BeginForm("RestoreTrack", "Admin", new { id = t.Id }, FormMethod.Post, new { data_confirm = "Make this track public again?" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button class="btn-volt btn-sm">↺ Restore</button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>

@@ -1,0 +1,44 @@
+@model MyPlaylistsVm
+@{
+    ViewBag.Title = "My playlists";
+    ViewBag.Nav = "library";
+}
+@Html.Partial("~/Views/Library/_LibraryHero.cshtml", new LibraryHeroVm { Active = "playlists", Sticker = "My playlists", StickerColor = "bg-volt", Title = "Your", Highlight = "mixes.", Text = "Name them, order them, keep them private or share them with everyone." })
+
+<section class="section !pt-12">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <p class="eyebrow">/ @Model.Playlists.Count playlists</p>
+    @Html.ActionLink("+ New playlist", "New", "PlaylistsManage", null, new { @class = "btn-volt" })
+  </div>
+  <div class="mt-8">
+    @if (!Model.Playlists.Any())
+    {
+      @Ui.EmptyState("You have no playlists yet. Make your first one.")
+    }
+    else
+    {
+      <div class="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <a href="/playlists/new" data-reveal class="flex aspect-square flex-col items-center justify-center gap-3 border-2 border-dashed border-ink bg-paper/60 p-6 text-center transition hover:bg-volt">
+          <span class="display text-8xl leading-none">+</span>
+          <span class="display text-2xl">New playlist</span>
+        </a>
+        @{ var i = 0; }
+        @foreach (var p in Model.Playlists)
+        {
+          i++;
+          <div class="flex flex-col gap-3" data-reveal="@(i * 60)">
+            @Html.Partial("_PlaylistCard", p)
+            <div class="flex gap-2">
+              @Html.ActionLink("✎ Edit", "Edit", "PlaylistsManage", new { id = p.Id }, new { @class = "chip chip-off flex-1 justify-center" })
+              @using (Html.BeginForm("Delete", "PlaylistsManage", new { id = p.Id }, FormMethod.Post, new { @class = "flex-1", data_confirm = "Delete the playlist \"" + p.Title + "\"? This cannot be undone." }))
+              {
+                @Html.AntiForgeryToken()
+                <button type="submit" class="chip chip-off w-full justify-center hover:bg-flame hover:text-paper">✕ Delete</button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</section>

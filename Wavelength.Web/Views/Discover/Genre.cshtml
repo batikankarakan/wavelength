@@ -1,0 +1,56 @@
+@model GenrePageVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.Title = Model.Genre.Name;
+    var g = Model.Genre;
+    var on = Fmt.On(g.Color);
+}
+<section class="relative overflow-hidden border-b-2 border-ink page-top" style="background:@g.Color;color:@on">
+  <div class="halftone absolute inset-0 opacity-20"></div>
+  <div class="relative mx-auto max-w-7xl px-6 pb-16">
+    <a href="/explore" class="sticker bg-paper text-ink">← All genres</a>
+    <h1 data-hop class="display mt-8 text-[clamp(4.5rem,14vw,12rem)]">@g.Name</h1>
+    <p class="mt-4 font-mono text-sm font-bold uppercase">@g.TrackCount published tracks</p>
+    @if (Model.Tracks.Any())
+    {
+      <button type="button" data-play-all="@string.Join(",", Model.Tracks.Select(t => t.Id))" class="btn-ink mt-8">▶ Play @g.Name</button>
+    }
+  </div>
+</section>
+
+<section class="section">
+  <div class="grid gap-12 lg:grid-cols-[1fr_20rem]">
+    <div>
+      <div class="mb-6 flex flex-wrap items-center gap-2">
+        <span class="eyebrow mr-2">Sort</span>
+        <a href="/genres/@g.Slug" class="chip @(Model.Sort == "popular" ? "chip-on" : "chip-off")">Popular</a>
+        <a href="/genres/@g.Slug?sort=new" class="chip @(Model.Sort == "new" ? "chip-on" : "chip-off")">Newest</a>
+      </div>
+      @Html.Partial("_TrackList", new TrackListVm { Tracks = Model.Tracks, ShowAlbum = true, Empty = "No tracks in this genre yet." })
+      @Html.Partial("_Pager", new PagerVm { Page = Model.Page, TotalPages = Model.TotalPages, Url = p => "/genres/" + g.Slug + "?page=" + p + (Model.Sort == "new" ? "&sort=new" : "") })
+    </div>
+    <aside class="space-y-10">
+      @if (Model.Artists.Any())
+      {
+        <div>
+          <p class="eyebrow mb-4">Top @g.Name artists</p>
+          <div class="brut divide-y-2 divide-ink bg-white">
+            @foreach (var a in Model.Artists)
+            {
+              <a href="/artists/@a.Id" class="flex items-center gap-3 p-3 hover:bg-volt">
+                @Html.Avatar(a.AvatarUrl, a.StageName, "h-12 w-12 text-xl rounded-full")
+                <span class="min-w-0"><span class="display block truncate text-2xl">@a.StageName@(a.Verified ? " ✓" : "")</span><span class="font-mono text-xs">@Fmt.Count(a.Plays) plays</span></span>
+              </a>
+            }
+          </div>
+        </div>
+      }
+      <div>
+        <p class="eyebrow mb-4">Other genres</p>
+        <div class="flex flex-wrap gap-2">
+          @foreach (var o in Model.Others) { <a href="/genres/@o.Slug" class="chip chip-off"><span class="mr-2 inline-block h-3 w-3 border-2 border-ink" style="background:@o.Color"></span>@o.Name</a> }
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>

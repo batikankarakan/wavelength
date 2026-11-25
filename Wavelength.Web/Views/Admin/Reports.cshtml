@@ -1,0 +1,134 @@
+@model ReportsVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.Title = "Reports";
+    var isAdmin = User.IsAdmin();
+    var back = "/admin/reports?tab=" + Model.Tab;
+}
+@Html.Partial("_AdminNav", new AdminNavVm { Active = "reports", Title = "Reports.", Sub = "Reports filed by listeners about tracks, comments and users. Dismiss them, or resolve them and hide the content." })
+
+<section class="section !pt-12">
+    <div class="flex flex-wrap gap-2 border-b-2 border-ink">
+        @foreach (var tab in new[] { "open", "resolved", "dismissed" })
+        {
+            <a href="/admin/reports?tab=@tab" class="tab @(Model.Tab == tab ? "tab-on" : "tab-off")">@tab (@AdminUi.Get(Model.Counts, tab))</a>
+        }
+    </div>
+
+    @if (!Model.Reports.Any())
+    {
+        <div class="mt-8">@Ui.EmptyState(Model.Tab == "open" ? "No open reports. The catalog is clean." : "No " + Model.Tab + " reports yet.")</div>
+    }
+
+    <div class="mt-8 grid gap-6 lg:grid-cols-2">
+        @for (var i = 0; i < Model.Reports.Count; i++)
+        {
+            var r = Model.Reports[i];
+            <article data-reveal="@(i % 4 * 60)" class="brut flex flex-col bg-white">
+                <header class="flex flex-wrap items-center gap-2 border-b-2 border-ink p-4">
+                    @Html.Sticker(r.Kind, AdminUi.KindColor(r.Kind))
+                    @Html.StatusBadge(r.Status)
+                    <span class="ml-auto font-mono text-xs">Report #@r.Id</span>
+                </header>
+                <div class="flex-1 space-y-4 p-5">
+                    <div class="border-2 border-ink bg-paper p-4">
+                        @if (r.Kind == "track")
+                        {
+                            <p class="eyebrow text-xs">Reported track</p>
+                            <a href="/tracks/@r.TrackId" class="display mt-1 block text-3xl hover:underline">@r.TrackTitle</a>
+                            <p class="font-mono text-xs">by @r.TrackArtist · @Html.StatusBadge(r.TrackStatus)</p>
+                        }
+                        else if (r.Kind == "comment")
+                        {
+                            <p class="eyebrow text-xs">Reported comment by @r.CommentAuthor @(r.CommentHidden ? "· hidden" : "")</p>
+                            <blockquote class="mt-2 border-l-4 border-flame pl-3 font-mono text-sm @(r.CommentHidden ? "line-through opacity-60" : "")">“@r.CommentBody”</blockquote>
+                            <p class="mt-2 font-mono text-xs">on <a href="/tracks/@r.CommentTrackId#comments" class="underline">@r.CommentTrackTitle</a></p>
+                        }
+                        else
+                        {
+                            <p class="eyebrow text-xs">Reported user</p>
+                            <a href="/users/@r.UserUsername" class="display mt-1 block text-3xl hover:underline">@r.UserName</a>
+                            <p class="font-mono text-xs">@@@r.UserUsername · @r.UserRole · @(r.UserActive ? "active" : "banned")</p>
+                        }
+                    </div>
+                    <div>
+                        <p class="eyebrow text-xs">Reason</p>
+                        <p class="mt-1 font-medium">@r.Reason</p>
+                        <p class="mt-2 font-mono text-xs text-ink/60">Filed by <a class="underline" href="/users/@r.ReporterUsername">@r.ReporterName</a>@if (r.HandlerName != null) {<span> · handled by @r.HandlerName</span>}</p>
+                    </div>
+                </div>
+                @if (r.Status == "open")
+                {
+                    string resolveLabel;
+                    if (r.Kind == "track") { resolveLabel = r.TrackStatus == TrackStatus.Published ? "Resolve & hide track" : "Resolve"; }
+                    else if (r.Kind == "comment") { resolveLabel = r.CommentHidden ? "Resolve" : "Resolve & hide comment"; }
+                    else { resolveLabel = isAdmin && r.UserRole != AppRoles.Admin && r.UserActive ? "Resolve & ban user" : "Resolve"; }
+                    <footer class="flex flex-wrap gap-3 border-t-2 border-ink bg-paper p-4">
+                        @using (Html.BeginForm("Resolve", "Admin", new { id = r.Id }, FormMethod.Post, new { data_confirm = resolveLabel + "?" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button class="btn-flame btn-sm">@resolveLabel</button>
+                        }
+                        @using (Html.BeginForm("Dismiss", "Admin", new { id = r.Id }, FormMethod.Post, null))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button class="btn-paper btn-sm">Dismiss</button>
+                        }
+                        @if (r.Kind == "user" && !isAdmin) { <p class="w-full font-mono text-xs">Only admins can ban accounts.</p> }
+                    </footer>
+                }
+                else if (r.Kind == "comment" && r.CommentHidden)
+                {
+                    <footer class="border-t-2 border-ink bg-paper p-4">
+                        @using (Html.BeginForm("RestoreComment", "Admin", new { id = r.CommentId }, FormMethod.Post, null))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("returnUrl", back)
+                            <button class="btn-volt btn-sm">↺ Restore comment</button>
+                        }
+                    </footer>
+                }
+            </article>
+        }
+    </div>
+    @Html.Partial("_Pager", Model.Pager)
+</section>
+
+<section class="border-t-2 border-ink bg-volt">
+    <div class="section !py-16">
+        <span class="eyebrow">/ Moderation</span>
+        <h2 class="display mt-2 text-5xl">Hidden comments</h2>
+        <p class="mt-2 font-mono text-sm">Hidden comments are not shown on track pages. Restore one if it was hidden by mistake.</p>
+        @if (!Model.HiddenComments.Any())
+        {
+            <p class="mt-6 font-mono text-sm font-bold">Nothing hidden.</p>
+        }
+        else
+        {
+            <div class="brut mt-8 overflow-x-auto bg-paper">
+                <table class="tbl min-w-[40rem]">
+                    <thead><tr><th>Comment</th><th>Author</th><th>Track</th><th>Written</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var c in Model.HiddenComments)
+                        {
+                            <tr>
+                                <td class="max-w-xs font-mono text-sm">@c.Body</td>
+                                <td class="font-mono text-sm">@c.Author</td>
+                                <td><a href="/tracks/@c.TrackId#comments" class="font-mono text-sm underline">@c.TrackTitle</a></td>
+                                <td class="whitespace-nowrap font-mono text-xs">@Fmt.Ago(c.CreatedAt)</td>
+                                <td>
+                                    @using (Html.BeginForm("RestoreComment", "Admin", new { id = c.Id }, FormMethod.Post, null))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("returnUrl", back)
+                                        <button class="btn-paper btn-sm">Restore</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</section>

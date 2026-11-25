@@ -1,0 +1,12 @@
+@model PagerVm
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="Pages">
+        @if (Model.Page > 1) { <a class="chip chip-off" href="@Model.Url(Model.Page - 1)">← Prev</a> }
+        @for (var p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+        {
+            <a class="chip @(p == Model.Page ? "chip-on" : "chip-off")" href="@Model.Url(p)">@p</a>
+        }
+        @if (Model.Page < Model.TotalPages) { <a class="chip chip-off" href="@Model.Url(Model.Page + 1)">Next →</a> }
+    </nav>
+}

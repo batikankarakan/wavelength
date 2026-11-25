@@ -1,0 +1,82 @@
+@using Wavelength.Web.Infrastructure
+@model Wavelength.Web.Controllers.NavVm
+@{
+    var links = new List<Tuple<string, string, string>>
+    {
+        Tuple.Create("explore", "Explore", "/explore"),
+        Tuple.Create("charts", "Charts", "/charts"),
+        Tuple.Create("search", "Search", "/search"),
+    };
+    if (Model.SignedIn) { links.Add(Tuple.Create("library", "Library", "/library")); }
+    if (Model.Role == AppRoles.Artist) { links.Add(Tuple.Create("studio", "Studio", "/studio")); }
+    if (Model.Role == AppRoles.Moderator || Model.Role == AppRoles.Admin) { links.Add(Tuple.Create("admin", "Admin", "/admin")); }
+}
+<header class="fixed inset-x-0 top-0 z-50 border-b-2 border-ink bg-paper">
+  <nav class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
+    <a href="/" class="flex items-center gap-3" aria-label="Wavelength home">
+      <span class="flex h-8 items-end gap-0.5"><i class="bar !w-1.5" style="animation-delay:-.2s"></i><i class="bar !w-1.5" style="animation-delay:-.6s"></i><i class="bar !w-1.5" style="animation-delay:-.9s"></i></span>
+      <span data-hop class="display text-3xl">Wavelength</span>
+    </a>
+    <ul class="hidden items-center gap-1 lg:flex">
+      @foreach (var l in links)
+      {
+        <li>@Html.NavLink(l.Item2, l.Item3, Model.Active == l.Item1)</li>
+      }
+    </ul>
+    <div class="hidden items-center gap-3 lg:flex">
+      @if (Model.SignedIn)
+      {
+        <a href="/notifications" class="icon-btn relative" aria-label="Notifications (@Model.Unread unread)">
+          <span aria-hidden="true">♪</span>
+          @if (Model.Unread > 0)
+          {
+            <span class="absolute -right-2.5 -top-2.5 flex h-6 min-w-6 items-center justify-center border-2 border-ink bg-flame px-1 font-mono text-[11px] font-bold text-paper">@(Model.Unread > 99 ? "99+" : Model.Unread.ToString())</span>
+          }
+        </a>
+        <div class="relative" data-dropdown>
+          <button type="button" class="flex items-center gap-2 border-2 border-ink bg-volt py-1 pl-1 pr-3 shadow-brut-sm transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none" data-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+            @Html.Avatar(Model.AvatarUrl, Model.DisplayName, "h-8 w-8 text-lg")
+            <span class="max-w-[9rem] truncate font-mono text-sm font-bold uppercase">@Model.DisplayName</span>
+            <span aria-hidden="true">▾</span>
+          </button>
+          <div class="menu hidden" data-dropdown-menu>
+            <a href="/users/@Model.Username">My profile</a>
+            <a href="/library/playlists">My playlists</a>
+            <a href="/history">History</a>
+            <a href="/following">Following</a>
+            <a href="/settings">Settings</a>
+            @using (Html.BeginForm("Logout", "Account", FormMethod.Post)) { @Html.AntiForgeryToken() <button type="submit" class="!text-flame">Log out</button> }
+          </div>
+        </div>
+      }
+      else
+      {
+        <a href="/login" class="btn-paper !px-5 !py-2">Log in</a>
+        <a href="/register" class="btn-volt !px-5 !py-2">Sign up</a>
+      }
+    </div>
+    <button type="button" class="flex h-11 w-11 flex-col items-center justify-center gap-1.5 border-2 border-ink bg-volt lg:hidden" data-toggle="#mobile-nav" aria-label="Menu" aria-expanded="false">
+      <span class="h-0.5 w-5 bg-ink"></span><span class="h-0.5 w-5 bg-ink"></span><span class="h-0.5 w-5 bg-ink"></span>
+    </button>
+  </nav>
+  <div id="mobile-nav" class="hidden max-h-[80vh] overflow-y-auto border-t-2 border-ink bg-paper lg:hidden">
+    <ul>
+      <li class="border-b-2 border-ink"><a href="/" class="block px-6 py-3 font-display text-3xl uppercase @(Model.Active == "home" ? "bg-volt" : "")">Home</a></li>
+      @foreach (var l in links)
+      {
+        <li class="border-b-2 border-ink"><a href="@l.Item3" class="block px-6 py-3 font-display text-3xl uppercase @(Model.Active == l.Item1 ? "bg-volt" : "")">@l.Item2</a></li>
+      }
+      @if (Model.SignedIn)
+      {
+        <li class="border-b-2 border-ink"><a href="/notifications" class="block px-6 py-3 font-display text-3xl uppercase">Notifications @(Model.Unread > 0 ? "(" + Model.Unread + ")" : "")</a></li>
+        <li class="border-b-2 border-ink"><a href="/users/@Model.Username" class="block px-6 py-3 font-display text-3xl uppercase">My profile</a></li>
+        <li class="border-b-2 border-ink"><a href="/settings" class="block px-6 py-3 font-display text-3xl uppercase">Settings</a></li>
+        <li>@using (Html.BeginForm("Logout", "Account", FormMethod.Post)) { @Html.AntiForgeryToken() <button class="block w-full px-6 py-3 text-left font-display text-3xl uppercase text-flame">Log out</button> }</li>
+      }
+      else
+      {
+        <li class="flex gap-3 p-6"><a href="/login" class="btn-paper flex-1">Log in</a><a href="/register" class="btn-volt flex-1">Sign up</a></li>
+      }
+    </ul>
+  </div>
+</header>

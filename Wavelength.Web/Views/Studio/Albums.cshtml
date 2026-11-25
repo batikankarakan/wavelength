@@ -1,0 +1,158 @@
+@model StudioAlbumsVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.StudioTitle = "Albums.";
+    ViewBag.StudioAccent = "bg-cobalt text-paper";
+    ViewBag.StudioLead = "Group your tracks into singles, EPs and albums. Tracks keep the order you uploaded them in.";
+    var openCreate = ViewBag.OpenCreate == true || !Model.Albums.Any();
+    var allTracks = Model.Albums.SelectMany(a => a.Tracks).Concat(Model.Singles).OrderBy(t => t.CreatedAt).ToList();
+    var types = new[] { new SelectListItem { Value = "single", Text = "Single" }, new SelectListItem { Value = "ep", Text = "EP" }, new SelectListItem { Value = "album", Text = "Album" } };
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+@Html.Partial("_StudioNav", Model.Header)
+
+<section class="section !pt-14">
+    <details class="brut bg-volt" @(openCreate ? "open" : "") data-reveal>
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 p-6">
+            <span class="display text-4xl">+ New album</span>
+            <span class="font-mono text-sm font-bold uppercase">Single · EP · Album</span>
+        </summary>
+        @using (Html.BeginForm("CreateAlbum", "Studio", FormMethod.Post, new { enctype = "multipart/form-data", @class = "grid gap-6 border-t-2 border-ink bg-white p-6 md:grid-cols-4" }))
+        {
+            @Html.AntiForgeryToken()
+            <div class="md:col-span-2">
+                @Html.LabelFor(m => m.NewAlbum.Title, "Title", new { @class = "label" })
+                @Html.TextBoxFor(m => m.NewAlbum.Title, new { @class = "field", maxlength = "100", placeholder = "Album title" })
+                @Html.ValidationMessageFor(m => m.NewAlbum.Title, null, new { @class = "err block" })
+            </div>
+            <div>
+                @Html.LabelFor(m => m.NewAlbum.Type, "Type", new { @class = "label" })
+                @Html.DropDownListFor(m => m.NewAlbum.Type, new SelectList(types, "Value", "Text", Model.NewAlbum.Type), new { @class = "field" })
+                @Html.ValidationMessageFor(m => m.NewAlbum.Type, null, new { @class = "err block" })
+            </div>
+            <div>
+                @Html.LabelFor(m => m.NewAlbum.ReleaseDate, "Release date", new { @class = "label" })
+                @Html.TextBoxFor(m => m.NewAlbum.ReleaseDate, "{0:yyyy-MM-dd}", new { type = "date", @class = "field" })
+                @Html.ValidationMessageFor(m => m.NewAlbum.ReleaseDate, null, new { @class = "err block" })
+            </div>
+            <div class="md:col-span-3">
+                <label for="NewAlbum_Cover" class="label">Cover · optional</label>
+                <input id="NewAlbum_Cover" name="NewAlbum.Cover" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*" class="field file:mr-4 file:border-2 file:border-ink file:bg-volt file:px-3 file:py-1 file:font-mono file:text-xs file:font-bold file:uppercase">
+                @Html.ValidationMessage("NewAlbum.Cover", null, new { @class = "err block" })
+            </div>
+            <div class="flex items-end"><button type="submit" class="btn-ink w-full">Create →</button></div>
+        }
+    </details>
+
+    @if (!Model.Albums.Any())
+    {
+        <div class="mt-10">@Ui.EmptyState("No albums yet. Create one above, then add your tracks to it.")</div>
+    }
+
+    <div class="mt-12 space-y-10">
+        @foreach (var a in Model.Albums)
+        {
+            var others = allTracks.Where(x => x.AlbumId != a.Id).ToList();
+            var albumTypes = new SelectList(types, "Value", "Text", a.Type);
+            <article id="album-@a.Id" class="brut scroll-mt-28 bg-white" data-reveal>
+                <div class="grid gap-6 border-b-2 border-ink p-6 md:grid-cols-[10rem_1fr]">
+                    <div class="w-40">@Html.Cover(new CoverVm { Url = a.CoverUrl, Color = Fmt.ColorFor(a.Id + 1), Label = a.Title })</div>
+                    <div class="flex flex-col justify-between gap-4">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                @Html.Sticker(a.Type, "bg-volt")
+                                @Html.Sticker(a.ReleaseDate.ToString("d MMM yyyy", inv), "bg-paper")
+                                @Html.Sticker(a.Tracks.Count + " tracks", "bg-mint")
+                            </div>
+                            <h2 class="display mt-4 text-5xl">@a.Title</h2>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            <a href="/albums/@a.Id" class="btn-paper btn-sm">Public page ↗</a>
+                            <button type="button" class="btn-paper btn-sm" data-toggle="#edit-album-@a.Id" aria-expanded="false">Edit details</button>
+                            @using (Html.BeginForm("DeleteAlbum", "Studio", new { id = a.Id }, FormMethod.Post, new { data_confirm = "Delete this album? Its tracks stay and become singles." }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn-flame btn-sm">Delete</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @using (Html.BeginForm("UpdateAlbum", "Studio", new { id = a.Id }, FormMethod.Post, new { id = "edit-album-" + a.Id, enctype = "multipart/form-data", @class = "hidden grid gap-5 border-b-2 border-ink bg-paper p-6 md:grid-cols-4" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="md:col-span-2">
+                        <label class="label" for="t-@a.Id">Title</label>
+                        @Html.TextBox("Title", a.Title, new { id = "t-" + a.Id, maxlength = "100", @class = "field", required = "required" })
+                    </div>
+                    <div>
+                        <label class="label" for="ty-@a.Id">Type</label>
+                        @Html.DropDownList("Type", albumTypes, new { id = "ty-" + a.Id, @class = "field" })
+                    </div>
+                    <div>
+                        <label class="label" for="d-@a.Id">Release date</label>
+                        @Html.TextBox("ReleaseDate", a.ReleaseDate.ToString("yyyy-MM-dd", inv), new { id = "d-" + a.Id, type = "date", @class = "field" })
+                    </div>
+                    <div class="md:col-span-3">
+                        <label class="label" for="c-@a.Id">New cover · optional</label>
+                        <input id="c-@a.Id" name="Cover" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*" class="field">
+                    </div>
+                    <div class="flex items-end"><button type="submit" class="btn-volt w-full">Save</button></div>
+                }
+
+                <div class="p-6">
+                    <p class="eyebrow">Track list</p>
+                    @if (!a.Tracks.Any())
+                    {
+                        <p class="mt-3 font-mono text-sm text-ink/60">No tracks in this album yet.</p>
+                    }
+                    else
+                    {
+                        <ol class="mt-3 border-2 border-ink" data-tracklist>
+                            @for (var i = 0; i < a.Tracks.Count; i++)
+                            {
+                                var t = a.Tracks[i];
+                                <li class="flex items-center gap-3 border-b-2 border-ink p-3 last:border-b-0" data-track-row="@t.Id">
+                                    <span class="display w-10 text-3xl text-ink/40">@((i + 1).ToString("00"))</span>
+                                    <button type="button" data-play="@t.Id" class="flex h-9 w-9 shrink-0 items-center justify-center border-2 border-ink bg-volt text-xs" aria-label="Play @t.Title"><span data-play-icon>▶</span></button>
+                                    <a href="/studio/tracks/@t.Id" class="display min-w-0 flex-1 truncate text-2xl hover:underline">@t.Title</a>
+                                    <span class="status status-@t.Status hidden sm:inline-block">@t.Status</span>
+                                    <span class="w-12 text-right font-mono text-sm">@Fmt.Duration(t.DurationSec)</span>
+                                    @using (Html.BeginForm("RemoveFromAlbum", "Studio", new { id = a.Id, trackId = t.Id }, FormMethod.Post, new { }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="icon-btn !h-9 !w-9 !text-sm" aria-label="Remove @t.Title from album" title="Remove from album">✕</button>
+                                    }
+                                </li>
+                            }
+                        </ol>
+                    }
+                    @if (others.Any())
+                    {
+                        var options = others.Select(o => new SelectListItem { Value = o.Id.ToString(), Text = o.Title + (o.AlbumId != null ? " (moves from another album)" : "") });
+                        using (Html.BeginForm("AddToAlbum", "Studio", new { id = a.Id }, FormMethod.Post, new { @class = "mt-5 flex flex-col gap-3 sm:flex-row" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <label class="sr-only" for="add-@a.Id">Add a track</label>
+                            @Html.DropDownList("trackId", options, new { id = "add-" + a.Id, @class = "field sm:max-w-md" })
+                            <button type="submit" class="btn-ink btn-sm">+ Add to album</button>
+                        }
+                    }
+                </div>
+            </article>
+        }
+    </div>
+
+    @if (Model.Singles.Any())
+    {
+        <div class="mt-14" data-reveal>
+            <h2 data-hop class="display text-5xl">Singles <span class="text-ink/30">/ no album</span></h2>
+            <div class="mt-6 flex flex-wrap gap-3">
+                @foreach (var t in Model.Singles)
+                {
+                    <a href="/studio/tracks/@t.Id" class="sticker bg-paper !text-sm">@t.Title · <span class="opacity-60">@t.Status</span></a>
+                }
+            </div>
+        </div>
+    }
+</section>

@@ -1,0 +1,17 @@
+@model ChartRow
+@if (Model.Movement == "new")
+{
+    <span class="status bg-flame text-paper" title="New entry">New</span>
+}
+else if (Model.Movement == "up")
+{
+    <span class="status bg-mint" title="Up @Model.Delta from #@Model.PrevRank">▲ @Model.Delta</span>
+}
+else if (Model.Movement == "down")
+{
+    <span class="status bg-paper" title="Down @Model.Delta from #@Model.PrevRank">▼ @Model.Delta</span>
+}
+else
+{
+    <span class="status bg-paper" title="Same as last week">—</span>
+}

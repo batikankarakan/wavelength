@@ -1,0 +1,90 @@
+@model StudioTracksVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.StudioTitle = "My tracks.";
+    ViewBag.StudioAccent = "bg-flame text-paper";
+    var filters = new[] { "all" }.Concat(TrackStatus.All).ToArray();
+    var returnUrl = Model.Filter == "all" ? "/studio/tracks" : "/studio/tracks?status=" + Model.Filter;
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+@Html.Partial("_StudioNav", Model.Header)
+
+<section class="section !pt-14">
+    <div class="flex flex-col justify-between gap-6 md:flex-row md:items-center">
+        <div class="flex flex-wrap gap-3" role="tablist" aria-label="Filter by status">
+            @foreach (var s in filters)
+            {
+                <a href="@(s == "all" ? "/studio/tracks" : "/studio/tracks?status=" + s)" class="chip @(Model.Filter == s ? "chip-on" : "chip-off")" aria-current="@(Model.Filter == s ? "true" : null)">
+                    @s <span class="ml-2 opacity-60">@Model.CountOf(s)</span>
+                </a>
+            }
+        </div>
+        @Html.ActionLink("+ Upload track", "Upload", "Studio", null, new { @class = "btn-volt shrink-0" })
+    </div>
+
+    @if (!Model.Tracks.Any())
+    {
+        <div class="mt-10">@Ui.EmptyState(Model.Filter == "all" ? "You have not uploaded anything yet. Your first track is one form away." : "No " + Model.Filter + " tracks.")</div>
+    }
+    else
+    {
+        <div class="brut mt-10 overflow-x-auto bg-paper" data-tracklist data-reveal>
+            <table class="tbl min-w-[860px]">
+                <thead>
+                    <tr><th>Track</th><th>Status</th><th class="text-right">Plays</th><th class="text-right">Likes</th><th class="text-right">Comments</th><th>Uploaded</th><th class="text-right">Actions</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in Model.Tracks)
+                    {
+                        <tr data-track-row="@t.Id">
+                            <td>
+                                <div class="flex items-center gap-3">
+                                    <button type="button" data-play="@t.Id" class="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden border-2 border-ink" style="background:@t.Color" aria-label="Preview @t.Title">
+                                        @if (!string.IsNullOrEmpty(t.CoverUrl)) { <img src="@t.CoverUrl" alt="" class="absolute inset-0 h-full w-full object-cover"> }
+                                        <span class="relative flex h-7 w-7 items-center justify-center border-2 border-ink bg-paper text-xs" data-play-icon>▶</span>
+                                    </button>
+                                    <div class="min-w-0">
+                                        <a href="/studio/tracks/@t.Id" class="display block truncate text-2xl hover:underline">@t.Title</a>
+                                        <p class="truncate font-mono text-xs uppercase">@(t.Genre ?? "No genre")@(t.Album != null ? " · " + t.Album : "") · @Fmt.Duration(t.DurationSec)</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>@Html.StatusBadge(t.Status)</td>
+                            <td class="text-right font-mono font-bold">@t.Plays.ToString("N0", inv)</td>
+                            <td class="text-right font-mono">@t.Likes</td>
+                            <td class="text-right font-mono">@t.Comments</td>
+                            <td class="whitespace-nowrap font-mono text-xs">@Fmt.Ago(t.CreatedAt)</td>
+                            <td>
+                                <div class="flex justify-end gap-2">
+                                    @if (t.Status == TrackStatus.Draft || t.Status == TrackStatus.Rejected)
+                                    {
+                                        using (Html.BeginForm("Submit", "Studio", new { id = t.Id }, FormMethod.Post, new { }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("returnUrl", returnUrl)
+                                            <button type="submit" class="btn-volt btn-sm">Submit</button>
+                                        }
+                                    }
+                                    @if (t.Status == TrackStatus.Published)
+                                    {
+                                        <a href="/tracks/@t.Id" class="btn-paper btn-sm" title="Public page">View</a>
+                                    }
+                                    @Html.ActionLink("Edit", "Edit", "Studio", new { id = t.Id }, new { @class = "btn-paper btn-sm" })
+                                    @if (t.Status == TrackStatus.Draft || t.Status == TrackStatus.Rejected || t.Status == TrackStatus.Published)
+                                    {
+                                        using (Html.BeginForm("Delete", "Studio", new { id = t.Id }, FormMethod.Post, new { data_confirm = "Delete this track for good?" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-flame btn-sm" aria-label="Delete @t.Title">✕</button>
+                                        }
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="mt-4 font-mono text-xs text-ink/60">Pending tracks wait for a moderator. Hidden tracks were removed after a report and can only be restored by a moderator.</p>
+    }
+</section>

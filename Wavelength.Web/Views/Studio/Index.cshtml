@@ -1,0 +1,139 @@
+@model StudioDashboardVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.StudioLead = "Plays, likes and followers, built straight from the listening history.";
+    var max = Math.Max(1, Model.Daily.Max(d => d.Count));
+    var kpis = new[]
+    {
+        Tuple.Create("Total plays", Model.TotalPlays, "bg-volt"),
+        Tuple.Create("Plays · 30 days", Model.Plays30, "bg-white"),
+        Tuple.Create("Likes", Model.Likes, "bg-flame text-paper"),
+        Tuple.Create("Followers", Model.Followers, "bg-cobalt text-paper"),
+        Tuple.Create("Share clicks", Model.ShareClicks, "bg-mint"),
+    };
+    var statuses = new[] { TrackStatus.Published, TrackStatus.Pending, TrackStatus.Draft, TrackStatus.Rejected, TrackStatus.Hidden };
+    var best = Model.Daily.OrderByDescending(d => d.Count).First();
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+}
+@Html.Partial("_StudioNav", Model.Header)
+
+<section class="section !pt-14">
+    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+        @for (var i = 0; i < kpis.Length; i++)
+        {
+            var k = kpis[i];
+            <div data-reveal="@(i * 70)" data-tilt="5" class="brut @k.Item3 p-5">
+                <p class="eyebrow text-xs">@k.Item1</p>
+                <p class="display mt-3 text-5xl md:text-6xl" data-count="@k.Item2">@k.Item2.ToString("N0", inv)</p>
+            </div>
+        }
+    </div>
+
+    <!-- plays per day -->
+    <div data-reveal class="brut mt-10 bg-white p-6 md:p-8">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <span class="eyebrow">/ Last 30 days</span>
+                <h2 data-hop class="display mt-2 text-5xl md:text-6xl">Plays per day</h2>
+            </div>
+            <p class="font-mono text-sm">Best day: <b>@best.Day.ToString("d MMM", inv)</b> · @best.Count plays</p>
+        </div>
+        <div class="mt-8 flex h-64 items-end gap-[3px] border-b-2 border-l-2 border-ink pl-1 md:gap-1.5" role="img" aria-label="Bar chart of plays per day over the last 30 days">
+            @for (var i = 0; i < Model.Daily.Count; i++)
+            {
+                var d = Model.Daily[i];
+                var h = d.Count == 0 ? 1.5 : Math.Max(4, d.Count * 100.0 / max);
+                var color = d.Count == best.Count && d.Count > 0 ? "bg-flame" : (i == Model.Daily.Count - 1 ? "bg-cobalt" : "bg-volt");
+                <div class="group relative flex h-full flex-1 items-end">
+                    <div class="bar-grow w-full border-2 border-b-0 border-ink @color transition group-hover:bg-ink" style="height:@(h.ToString("0.#", inv))%;animation-delay:@(i * 25)ms"></div>
+                    <span class="pointer-events-none absolute -top-9 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap border-2 border-ink bg-ink px-2 py-1 font-mono text-[11px] text-paper group-hover:block">@d.Day.ToString("d MMM", inv) · @d.Count</span>
+                </div>
+            }
+        </div>
+        <div class="mt-2 flex justify-between font-mono text-[11px] uppercase">
+            @for (var i = 0; i < Model.Daily.Count; i += 7) { <span>@Model.Daily[i].Day.ToString("d MMM", inv)</span> }
+            <span>Today</span>
+        </div>
+    </div>
+
+    <div class="mt-10 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+        <!-- top tracks -->
+        <div data-reveal>
+            <div class="flex items-end justify-between gap-4">
+                <h2 data-hop class="display text-5xl">Top tracks</h2>
+                @Html.ActionLink("All tracks →", "Tracks", "Studio", null, new { @class = "font-mono text-sm font-bold underline decoration-2 hover:bg-volt" })
+            </div>
+            @if (!Model.TopTracks.Any())
+            {
+                <div class="mt-6">@Ui.EmptyState("No published tracks yet. Upload one and send it for review.")</div>
+            }
+            else
+            {
+                <div class="brut mt-6 overflow-x-auto bg-paper" data-tracklist>
+                    <table class="tbl">
+                        <thead><tr><th>#</th><th>Track</th><th class="text-right">Plays</th><th class="text-right">Likes</th></tr></thead>
+                        <tbody>
+                            @for (var i = 0; i < Model.TopTracks.Count; i++)
+                            {
+                                var t = Model.TopTracks[i].Track;
+                                var likes = Model.TopTracks[i].Likes;
+                                <tr data-track-row="@t.Id">
+                                    <td class="display text-3xl text-ink/40">@((i + 1).ToString("00"))</td>
+                                    <td>
+                                        <div class="flex items-center gap-3">
+                                            <button type="button" data-play="@t.Id" class="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-ink bg-volt text-sm shadow-brut-sm" aria-label="Play @t.Title"><span data-play-icon>▶</span></button>
+                                            <a href="/tracks/@t.Id" class="display truncate text-2xl hover:underline">@t.Title</a>
+                                        </div>
+                                    </td>
+                                    <td class="text-right font-mono font-bold">@t.Plays.ToString("N0", inv)</td>
+                                    <td class="text-right font-mono">@likes</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="space-y-8">
+            <!-- status counts -->
+            <div data-reveal="100" class="brut bg-ink p-6 text-paper">
+                <p class="eyebrow text-volt">Catalog status</p>
+                <ul class="mt-4 space-y-3">
+                    @foreach (var s in statuses)
+                    {
+                        <li class="flex items-center justify-between gap-3">
+                            <a href="/studio/tracks?status=@s" class="status status-@s hover:-translate-y-0.5 transition">@s</a>
+                            <span class="display text-3xl">@Model.CountOf(s)</span>
+                        </li>
+                    }
+                </ul>
+                @Html.ActionLink("+ Upload a track", "Upload", "Studio", null, new { @class = "btn-volt mt-6 w-full" })
+            </div>
+
+            <!-- recent comments -->
+            <div data-reveal="150">
+                <h2 data-hop class="display text-4xl">Latest comments</h2>
+                @if (!Model.Comments.Any())
+                {
+                    <div class="mt-4">@Ui.EmptyState("No comments yet.")</div>
+                }
+                else
+                {
+                    <ul class="brut mt-4 bg-white">
+                        @foreach (var c in Model.Comments)
+                        {
+                            <li class="flex gap-3 border-b-2 border-ink p-4 last:border-b-0">
+                                @Html.Avatar(c.AvatarUrl, c.User, "h-10 w-10 text-xl")
+                                <div class="min-w-0">
+                                    <p class="font-mono text-xs"><a href="/users/@c.Username" class="font-bold hover:underline">@c.User</a> on <a href="/tracks/@c.TrackId#comments" class="font-bold underline">@c.TrackTitle</a> · @Fmt.Ago(c.CreatedAt)</p>
+                                    <p class="mt-1 line-clamp-2 font-medium">@c.Body</p>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</section>

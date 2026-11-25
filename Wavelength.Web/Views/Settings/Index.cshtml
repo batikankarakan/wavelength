@@ -1,0 +1,120 @@
+@model SettingsVm
+@using Wavelength.Web.Infrastructure
+@{
+    ViewBag.Title = "Settings";
+    ViewBag.Nav = "library";
+    var staff = Model.Role == AppRoles.Moderator || Model.Role == AppRoles.Admin;
+    var displayName = Model.Profile.DisplayName ?? "";
+    var confirmError = ViewData.ModelState.ContainsKey("confirm") && ViewData.ModelState["confirm"].Errors.Count > 0
+        ? ViewData.ModelState["confirm"].Errors[0].ErrorMessage : null;
+}
+@Html.Partial("~/Views/Library/_LibraryHero.cshtml", new LibraryHeroVm { Active = "settings", Sticker = "Settings", StickerColor = "bg-paper", Title = "Your", Highlight = "profile.", Text = "Edit how people see you, change your password or leave for good." })
+
+<section class="section !pt-12">
+  <div class="grid gap-10 lg:grid-cols-[16rem_1fr]">
+    <aside class="space-y-4 lg:sticky lg:top-28 lg:self-start">
+      <div class="brut bg-volt p-5 text-center">
+        <div class="mx-auto w-28">@Html.Cover(new CoverVm { Url = Model.AvatarUrl, Color = Fmt.ColorFor(displayName.Length), Label = displayName, Round = true })</div>
+        <p class="display mt-4 truncate text-3xl">@displayName</p>
+        <p class="truncate font-mono text-xs">@@@Model.Profile.Username</p>
+        <span class="sticker mt-3 bg-paper">@Model.Role</span>
+        <p class="mt-3 font-mono text-[11px] uppercase">member since @Model.CreatedAt.ToString("MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</p>
+      </div>
+      <nav class="brut flex flex-col bg-white font-mono text-sm font-bold uppercase">
+        <a href="#profile" class="border-b-2 border-ink px-4 py-3 hover:bg-volt">→ Profile</a>
+        <a href="#password" class="border-b-2 border-ink px-4 py-3 hover:bg-volt">→ Password</a>
+        <a href="/users/@Model.Profile.Username" class="border-b-2 border-ink px-4 py-3 hover:bg-volt">↗ Public profile</a>
+        @if (Model.Role == AppRoles.Artist) { <a href="/studio/profile" class="border-b-2 border-ink px-4 py-3 hover:bg-volt">↗ Artist profile</a> }
+        <a href="#danger" class="px-4 py-3 text-flame hover:bg-flame hover:text-paper">→ Delete account</a>
+      </nav>
+    </aside>
+
+    <div class="space-y-12">
+      @* profile *@
+      @using (Html.BeginForm("UpdateProfile", "Settings", FormMethod.Post, new { id = "profile", enctype = "multipart/form-data", @class = "brut scroll-mt-28 bg-white p-6 md:p-10", data_reveal = "" }))
+      {
+        @Html.AntiForgeryToken()
+        <p class="eyebrow">/ Profile</p>
+        <h2 class="display mt-2 text-5xl">How people see you.</h2>
+        <div class="mt-8 grid gap-6 md:grid-cols-2">
+          @Html.BrutField(m => m.Profile.DisplayName, "Display name", autocomplete: "name")
+          <div>
+            @Html.BrutField(m => m.Profile.Username, "Username", autocomplete: "username")
+            <p class="hint">Your public page: /users/@Model.Profile.Username</p>
+          </div>
+          <div class="md:col-span-2">
+            @Html.BrutField(m => m.Profile.Email, "Email", "email", null, "email")
+          </div>
+          <div class="md:col-span-2">
+            @Html.LabelFor(m => m.Profile.Bio, "Bio", new { @class = "label" })
+            @Html.TextAreaFor(m => m.Profile.Bio, new { rows = "3", maxlength = "300", @class = "field resize-none", placeholder = "A line about your taste." })
+            @Html.ValidationMessageFor(m => m.Profile.Bio, null, new { @class = "err block" })
+          </div>
+          <div class="md:col-span-2">
+            <label for="avatar" class="label">Avatar</label>
+            <div class="flex flex-wrap items-center gap-5">
+              @Html.Avatar(Model.AvatarUrl, displayName, "h-20 w-20 text-4xl")
+              <div class="min-w-0 flex-1">
+                <input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="block w-full font-mono text-xs file:mr-3 file:border-2 file:border-ink file:bg-volt file:px-3 file:py-2 file:font-mono file:font-bold file:uppercase">
+                <p class="hint">JPG, PNG, WEBP or GIF · max 4 MB.</p>
+                @Html.ValidationMessage("avatar", new { @class = "err block" })
+                @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                {
+                  <label class="mt-3 flex items-center gap-2 font-mono text-sm"><input type="checkbox" name="Profile.RemoveAvatar" value="true" class="tick"> Remove avatar</label>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn-volt mt-8">Save profile →</button>
+      }
+
+      @* password *@
+      @using (Html.BeginForm("Password", "Settings", FormMethod.Post, new { id = "password", @class = "brut scroll-mt-28 bg-white p-6 md:p-10", data_reveal = "" }))
+      {
+        @Html.AntiForgeryToken()
+        <p class="eyebrow">/ Password</p>
+        <h2 class="display mt-2 text-5xl">Lock it down.</h2>
+        <div class="mt-8 grid gap-6 md:grid-cols-3">
+          @Html.BrutField(m => m.Password.CurrentPassword, "Current", "password", null, "current-password")
+          @Html.BrutField(m => m.Password.NewPassword, "New", "password", null, "new-password")
+          @Html.BrutField(m => m.Password.ConfirmPassword, "Repeat new", "password", null, "new-password")
+        </div>
+        <button type="submit" class="btn-ink mt-8">Change password →</button>
+      }
+
+      @* danger zone *@
+      <div id="danger" class="scroll-mt-28 border-2 border-ink bg-flame p-6 text-paper shadow-brut md:p-10" data-reveal>
+        <p class="eyebrow">/ Danger zone</p>
+        <h2 class="display mt-2 text-5xl">Delete account.</h2>
+        @if (staff)
+        {
+          <p class="mt-4 max-w-xl font-medium">Moderator and admin accounts cannot be deleted from here. Ask an admin to change your role first.</p>
+        }
+        else
+        {
+          <p class="mt-4 max-w-xl font-medium">This removes your profile, playlists, likes, history, comments@(Model.Role == AppRoles.Artist ? ", your artist profile and every track you uploaded" : ""). It cannot be undone.</p>
+          using (Html.BeginForm("Delete", "Settings", FormMethod.Post, new { @class = "mt-6 flex flex-col gap-4 md:flex-row md:items-end", data_confirm = "Really delete your account and all your data?" }))
+          {
+            @Html.AntiForgeryToken()
+            <div class="flex-1">
+              <label for="confirm" class="label">Type <b class="bg-ink px-1">@Model.Profile.Username</b> to confirm</label>
+              <input id="confirm" name="confirm" class="field text-ink" autocomplete="off">
+              @if (confirmError != null)
+              {
+                <p class="mt-2 inline-block bg-ink px-2 py-1 font-mono text-sm font-bold text-volt">! @confirmError</p>
+              }
+            </div>
+            <button type="submit" class="btn-paper">✕ Delete forever</button>
+          }
+        }
+      </div>
+    </div>
+  </div>
+</section>
+@section Scripts {
+  @if (Model.Section != "profile")
+  {
+    <script>var target = document.getElementById('@Model.Section'); if (target) { target.scrollIntoView(); }</script>
+  }
+}

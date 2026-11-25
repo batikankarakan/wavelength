@@ -1,0 +1,170 @@
+@model TrackPageVm
+@using Wavelength.Web.Infrastructure
+@{
+    var t = Model.Track;
+    var signedIn = Request.IsAuthenticated;
+    var published = t.Status == TrackStatus.Published;
+    var here = "/tracks/" + t.Id;
+    var on = Fmt.On(t.Color);
+}
+@if (!published)
+{
+  <div class="fixed inset-x-0 top-[66px] z-40 border-b-2 border-ink bg-ink py-2 text-center font-mono text-sm font-bold uppercase text-volt">
+    Preview · status: <span class="status status-@t.Status">@t.Status</span> · only @(Model.IsOwner ? "you" : "the artist") and moderators can see this page
+  </div>
+}
+<section class="relative overflow-hidden border-b-2 border-ink page-top">
+  <div class="halftone absolute -right-20 top-20 hidden h-[28rem] w-[28rem] opacity-20 lg:block"></div>
+  <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-6 pb-16 lg:grid-cols-[1fr_1.2fr]">
+    <!-- record card -->
+    <div data-tilt="5" class="relative mx-auto w-full max-w-md" data-tracklist>
+      @if (t.Genre != null) { <span class="sticker absolute -left-4 -top-4 z-10 bg-paper text-sm">@t.Genre</span> }
+      <div class="brut p-5" style="background:@t.Color">
+        <div class="relative flex aspect-square items-center justify-center overflow-hidden border-2 border-ink bg-paper/20">
+          @if (t.CoverUrl != null) { <img src="@t.CoverUrl" alt="Cover of @t.Title" class="absolute inset-0 h-full w-full object-cover"> }
+          else { <div class="halftone absolute inset-0 opacity-20"></div><div class="record spin-slow relative h-[82%] w-[82%] rounded-full border-2 border-ink"></div> }
+        </div>
+        <div class="mt-5 flex items-center justify-between gap-3 border-2 border-ink bg-paper p-4">
+          <div class="min-w-0">
+            <p class="display truncate text-3xl">@t.Title</p>
+            <p class="truncate font-mono text-sm">@t.Artist · @Fmt.Duration(t.DurationSec)</p>
+          </div>
+          <button type="button" data-play="@t.Id" class="flex h-14 w-14 shrink-0 items-center justify-center border-2 border-ink bg-volt text-xl shadow-brut-sm transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none" aria-label="Play @t.Title"><span data-play-icon>▶</span></button>
+        </div>
+        <div class="mt-4 h-10"><div class="flex h-full items-end gap-1.5">@for (var n = 1; n <= 26; n++) { <i class="bar" style="background:@on;animation-delay:@((-((n * 137) % 100) / 80.0).ToString(System.Globalization.CultureInfo.InvariantCulture))s"></i> }</div></div>
+      </div>
+      <span class="sticker absolute -bottom-4 -right-3 z-10 bg-mint">▶ @Fmt.Count(t.Plays) plays</span>
+    </div>
+
+    <!-- info -->
+    <div>
+      <a href="/artists/@t.ArtistId" class="inline-flex items-center gap-3 border-2 border-ink bg-white py-1 pl-1 pr-4 shadow-brut-sm hover:bg-volt">
+        @Html.Avatar(Model.ArtistAvatar, t.Artist, "h-9 w-9 text-lg")
+        <span class="font-mono text-sm font-bold uppercase">@t.Artist@(t.Verified ? " ✓" : "")</span>
+      </a>
+      <h1 data-hop class="display mt-6 text-[clamp(3.5rem,8vw,7.5rem)]">@t.Title</h1>
+      <div class="mt-4 flex flex-wrap gap-2">
+        @foreach (var g in Model.Genres) { <a href="/genres/@g.Slug" class="sticker" style="background:@g.Color;color:@Fmt.On(g.Color)">@g.Name</a> }
+        @if (t.AlbumId != null) { <a href="/albums/@t.AlbumId" class="sticker bg-paper">◉ @t.AlbumTitle</a> }
+      </div>
+      <dl class="mt-8 grid max-w-lg grid-cols-3 border-2 border-ink bg-white">
+        <div class="border-r-2 border-ink p-4"><dt class="eyebrow text-xs">Plays</dt><dd class="display text-4xl">@Fmt.Count(t.Plays)</dd></div>
+        <div class="border-r-2 border-ink p-4"><dt class="eyebrow text-xs">Likes</dt><dd class="display text-4xl">@Fmt.Count(Model.Likes)</dd></div>
+        <div class="p-4"><dt class="eyebrow text-xs">Released</dt><dd class="display text-4xl">@t.CreatedAt.ToString("MMM yy")</dd></div>
+      </dl>
+
+      @if (published)
+      {
+      <div class="mt-8 flex flex-wrap items-start gap-3">
+        <button type="button" data-play="@t.Id" class="btn-volt" data-tracklist>▶ Play</button>
+        <button type="button" data-like="@t.Id" aria-pressed="@(t.Liked ? "true" : "false")" class="btn @(t.Liked ? "bg-flame text-paper" : "bg-paper")">♥ <span data-like-count>@Model.Likes</span></button>
+        @if (signedIn)
+        {
+          <details class="relative">
+            <summary class="btn-paper cursor-pointer list-none">＋ Playlist</summary>
+            <div class="brut absolute left-0 z-30 mt-3 w-72 bg-paper">
+              <p class="eyebrow border-b-2 border-ink px-4 py-3 text-xs">Add to playlist</p>
+              @if (!Model.MyPlaylists.Any()) { <p class="px-4 py-3 font-mono text-sm">You have no playlists yet.</p> }
+              @foreach (var p in Model.MyPlaylists)
+              {
+                <form method="post" action="/playlists/@p.Id/add-track" class="border-b-2 border-ink">
+                  @Html.AntiForgeryToken()
+                  <input type="hidden" name="trackId" value="@t.Id"><input type="hidden" name="returnUrl" value="@here">
+                  <button class="flex w-full items-center justify-between px-4 py-3 text-left font-mono text-sm font-bold hover:bg-volt disabled:cursor-default disabled:opacity-50" disabled="@(p.HasTrack ? "disabled" : null)">
+                    <span class="truncate">@p.Title</span><span>@(p.HasTrack ? "✓" : "+")</span>
+                  </button>
+                </form>
+              }
+              <a href="/playlists/new" class="block px-4 py-3 font-mono text-sm font-bold uppercase hover:bg-volt">＋ New playlist</a>
+            </div>
+          </details>
+          using (Html.BeginForm("Share", "Tracks", new { id = t.Id }, FormMethod.Post)) { @Html.AntiForgeryToken() <button class="btn-cobalt">↗ Share</button> }
+        }
+        else
+        {
+          <a href="/login?returnUrl=@Uri.EscapeDataString(here)" class="btn-paper">＋ Playlist</a>
+          <a href="/login?returnUrl=@Uri.EscapeDataString(here)" class="btn-cobalt">↗ Share</a>
+        }
+      </div>
+      if (Model.ShareUrl != null)
+      {
+        <div id="share" class="mt-6 flex max-w-lg scroll-mt-32 items-stretch border-2 border-ink bg-white shadow-brut-sm">
+          <input readonly value="@Model.ShareUrl" class="min-w-0 flex-1 bg-transparent px-4 font-mono text-sm outline-none" aria-label="Share link" onclick="this.select()">
+          <button type="button" data-copy="@Model.ShareUrl" class="border-l-2 border-ink bg-volt px-4 font-mono text-xs font-bold uppercase hover:bg-mint">Copy</button>
+        </div>
+        <p class="hint">Your link was opened @Model.ShareClicks time@(Model.ShareClicks == 1 ? "" : "s").</p>
+      }
+      <div class="mt-6">@Html.Partial("_PubReport", new PubReportVm("trackId", t.Id, "Report this track", here))</div>
+      }
+      else if (Model.IsOwner)
+      {
+        <a href="/studio/tracks/@t.Id" class="btn-ink mt-8">Edit in studio →</a>
+      }
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="grid gap-12 lg:grid-cols-[1fr_1.3fr]">
+    <!-- lyrics -->
+    <div>
+      <h2 data-hop class="display text-5xl md:text-6xl">Lyrics</h2>
+      <div class="brut mt-6 bg-volt p-6 md:p-8">
+        @if (string.IsNullOrWhiteSpace(Model.Lyrics)) { <p class="font-mono text-sm">Instrumental. Just vibes, no words.</p> }
+        else { <p class="prose-lyrics">@Model.Lyrics</p> }
+      </div>
+      @if (Model.MoreFromArtist.Any())
+      {
+        <h2 class="display mt-12 text-4xl">More from <a href="/artists/@t.ArtistId" class="underline decoration-4 hover:bg-volt">@t.Artist</a></h2>
+        <div class="mt-6">@Html.Partial("_TrackList", new TrackListVm { Tracks = Model.MoreFromArtist, Numbered = false })</div>
+      }
+    </div>
+
+    <!-- comments -->
+    <div id="comments" class="scroll-mt-28">
+      <h2 data-hop class="display text-5xl md:text-6xl">Comments <span class="text-cobalt">(@Model.CommentCount)</span></h2>
+      @if (published)
+      {
+        if (signedIn)
+        {
+          using (Html.BeginForm("Comment", "Tracks", new { id = t.Id }, FormMethod.Post, new { @class = "brut mt-6 bg-white p-4" }))
+          {
+            @Html.AntiForgeryToken()
+            <label for="body" class="label">Say something nice</label>
+            <textarea id="body" name="body" rows="3" maxlength="1000" required class="field resize-none" placeholder="What does this track make you feel?"></textarea>
+            <div class="mt-3 flex justify-end"><button class="btn-volt btn-sm">Post comment →</button></div>
+          }
+        }
+        else
+        {
+          <div class="mt-6 border-2 border-dashed border-ink p-5 font-mono text-sm"><a href="/login?returnUrl=@Uri.EscapeDataString(here + "#comments")" class="font-bold underline hover:bg-volt">Log in</a> to join the conversation.</div>
+        }
+      }
+      <div class="mt-8 space-y-5">
+        @if (!Model.Comments.Any()) { @Ui.EmptyState("No comments yet. Start the thread.") }
+        @foreach (var c in Model.Comments)
+        {
+          <article id="comment-@c.Id" class="scroll-mt-28">
+            @Html.Partial("_PubComment", new PubCommentVm(c, here))
+            <div class="ml-8 mt-3 space-y-3 border-l-2 border-ink pl-5 md:ml-12">
+              @foreach (var r in c.Replies) { <div id="comment-@r.Id" class="scroll-mt-28">@Html.Partial("_PubComment", new PubCommentVm(r, here))</div> }
+              @if (signedIn && published)
+              {
+                <details>
+                  <summary class="cursor-pointer list-none font-mono text-xs font-bold uppercase hover:text-cobalt">↳ Reply</summary>
+                  @using (Html.BeginForm("Comment", "Tracks", new { id = t.Id }, FormMethod.Post, new { @class = "mt-2 flex gap-2" }))
+                  {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="parentId" value="@c.Id">
+                    <input name="body" required maxlength="1000" class="field !py-2 text-sm" placeholder="Reply to @c.Name">
+                    <button class="btn-ink btn-sm shrink-0">Send</button>
+                  }
+                </details>
+              }
+            </div>
+          </article>
+        }
+      </div>
+    </div>
+  </div>
+</section>
