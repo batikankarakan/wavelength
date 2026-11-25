@@ -64,7 +64,8 @@ public class TrackLifecycleTests : IClassFixture<WavelengthFactory>
         var s = await _app.LoginAs("selin@wavelength.app");
 
         var page = await s.Get($"/studio/tracks/{t.Id}");
-        Assert.Contains("The audio clips at the end", page.Text);
+        var text = System.Text.RegularExpressions.Regex.Replace(page.Text, @"\s+", " ");
+        Assert.True(text.Contains("The audio clips at the end"), $"status {page.Status}, track status {t.Status}, page: " + text[..Math.Min(text.Length, 1500)]);
 
         var save = await s.Post($"/studio/tracks/{t.Id}", EditFields("Kintsugi (remaster)", genre));
         Assert.Equal($"/studio/tracks/{t.Id}", save.Location);

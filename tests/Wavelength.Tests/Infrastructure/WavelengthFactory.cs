@@ -98,7 +98,7 @@ public class WavelengthFactory : IAsyncLifetime
             }
             catch (Exception) when (DateTime.UtcNow < until) { }
             if (DateTime.UtcNow > until)
-                throw new TimeoutException("The app did not start: " + (UseIisExpress ? "IIS Express on " + BaseUrl : await Docker($"logs --tail 30 {_container}")));
+                throw new TimeoutException("The app did not start: " + (UseIisExpress ? "IIS Express on " + BaseUrl + (_iisExpress!.HasExited ? " exited with code " + _iisExpress.ExitCode : "") : await Docker($"logs --tail 30 {_container}")));
             await Task.Delay(1000);
         }
     }
@@ -135,7 +135,8 @@ public class WavelengthFactory : IAsyncLifetime
         RegisterUploadsCleanup(Path.Combine(web, "uploads"));
         var psi = new ProcessStartInfo(exe, $"/path:\"{web}\" /port:{port} /clr:v4.0 /systray:false")
         {
-            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
+            // stdin stays open (redirected, never written): IIS Express stops when its console input closes
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
         };
         psi.Environment["WAVELENGTH_DB"] = AppSql; // inherited by the app (AppDbContext.DefaultConnection)
         _iisExpress = Process.Start(psi)!;
